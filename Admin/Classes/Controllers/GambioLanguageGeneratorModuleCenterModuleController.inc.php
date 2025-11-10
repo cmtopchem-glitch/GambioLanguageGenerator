@@ -8,6 +8,20 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
     public function actionDefault()
     {
+        // Debug: Zeige welche Action aufgerufen wird
+        $action = $this->_getQueryParameter('action');
+        error_log('GLG: actionDefault() called, action parameter: ' . ($action ? $action : 'none'));
+
+        // Handle sub-actions manually
+        if ($action === 'save') {
+            error_log('GLG: Routing to actionSave()');
+            return $this->actionSave();
+        }
+        if ($action === 'generate') {
+            error_log('GLG: Routing to actionGenerate()');
+            return $this->actionGenerate();
+        }
+
         $this->pageTitle = 'Gambio Language Generator';
 
         // Stelle sicher, dass die Settings-Tabelle existiert
