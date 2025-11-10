@@ -646,36 +646,23 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
         try {
             // Lade Helper-Klassen
-            require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGReader.php');
             require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGCompare.php');
 
-            $reader = new GLGReader();
             $comparer = new GLGCompare();
 
-            // Lese beide Sprachen
-            error_log('GLG: Reading language files...');
-            $sourceData = $reader->readLanguageFiles($sourceLanguage);
-            $targetData = $reader->readLanguageFiles($targetLanguage);
+            // Vergleiche die Sprachen
+            error_log('GLG: Comparing languages...');
+            $comparison = $comparer->compareLanguages($sourceLanguage, $targetLanguage);
 
-            error_log('GLG: Source: ' . count($sourceData) . ', Target: ' . count($targetData));
-
-            // Vergleiche
-            $comparison = $comparer->compare($sourceData, $targetData);
-
-            $missingCount = count($comparison['missing']);
-            $completion = $missingCount > 0
-                ? round((count($targetData) / count($sourceData)) * 100, 1)
-                : 100;
-
-            error_log('GLG: Comparison completed. Missing: ' . $missingCount);
+            error_log('GLG: Comparison completed. Missing: ' . $comparison['missing_entries']);
 
             $this->_jsonResponse([
                 'success' => true,
-                'sourceCount' => count($sourceData),
-                'targetCount' => count($targetData),
-                'missingCount' => $missingCount,
-                'completion' => $completion,
-                'missing' => array_slice($comparison['missing'], 0, 100) // Nur erste 100 zeigen
+                'sourceCount' => $comparison['total_source_entries'],
+                'targetCount' => $comparison['total_target_entries'],
+                'missingCount' => $comparison['missing_entries'],
+                'completion' => $comparison['statistics']['completion_percentage'],
+                'missing' => array_slice($comparison['missing_keys'], 0, 100) // Nur erste 100 zeigen
             ]);
 
         } catch (Exception $e) {
