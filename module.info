@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module>
+    <n>GambioLanguageGenerator</n>
+    <version>1.0.0</version>
+    <title>
+        <de>Gambio Sprachgenerator</de>
+        <en>Gambio Language Generator</en>
+    </title>
+    <description>
+        <de>Generiert automatisch Sprachdateien für neue und vorhandene Shop-Sprachen basierend auf der Original-Shopsprache.</de>
+        <en>Automatically generates language files for new and existing shop languages based on the original shop language.</en>
+    </description>
+    <developer>Christian Mittenzwei / REDOzone</developer>
+    <website>https://redozone.de</website>
+    <compatibility>
+        <gambio from="4.0" to="4.9">compatible</gambio>
+        <gambio from="3.0" to="3.15">compatible</gambio>
+    </compatibility>
+</module>
