@@ -554,6 +554,10 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
         }
 
         try {
+            // Erhöhe Timeout für lange Übersetzungen
+            set_time_limit(3600); // 1 Stunde
+            ini_set('memory_limit', '512M');
+
             // Lade Helper-Klassen
             require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGReader.php');
             require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGTranslator.php');
@@ -563,46 +567,77 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
             $translator = new GLGTranslator($settings);
             $writer = new GLGFileWriter();
 
-            // Lese Quellsprache
-            error_log('GLG: Reading source language files...');
-            $sourceData = $reader->readLanguageFiles($sourceLanguage);
+            // Lese Quellsprache - gibt verschachtelte Struktur zurück
+            error_log('GLG: Reading source language data...');
+            $sourceFiles = $reader->readLanguageData($sourceLanguage);
 
-            if (empty($sourceData)) {
+            if (empty($sourceFiles)) {
                 $this->_jsonResponse(['success' => false, 'error' => 'Keine Sprachdateien in Quellsprache gefunden']);
                 return;
             }
 
-            error_log('GLG: Found ' . count($sourceData) . ' entries in source language');
+            error_log('GLG: Found ' . count($sourceFiles) . ' source files');
 
             $results = [];
+            $totalEntriesProcessed = 0;
 
             // Übersetze in jede Zielsprache
             foreach ($targetLanguages as $targetLanguage) {
                 error_log('GLG: Translating to ' . $targetLanguage);
+                $filesWritten = 0;
 
-                // Übersetze in Batches (max 50 Einträge pro Request)
-                $batchSize = 50;
-                $chunks = array_chunk($sourceData, $batchSize, true);
-                $translatedData = [];
+                // Verarbeite jede Source-Datei
+                foreach ($sourceFiles as $sourcePath => $sourceFileData) {
+                    error_log('GLG: Processing file: ' . $targetLanguage . '/' . $sourcePath);
 
-                foreach ($chunks as $index => $chunk) {
-                    error_log('GLG: Translating batch ' . ($index + 1) . '/' . count($chunks));
-                    $translated = $translator->translateBatch($chunk, $sourceLanguage, $targetLanguage, '');
-                    $translatedData = array_merge($translatedData, $translated);
+                    $sections = $sourceFileData['sections'];
+                    $translatedSections = [];
+
+                    // Verarbeite jede Sektion
+                    foreach ($sections as $sectionName => $entries) {
+                        // Übersetze Einträge in dieser Sektion
+                        // Bei vielen Einträgen in Batches aufteilen (max 50 pro Request)
+                        $batchSize = 50;
+                        $entryChunks = array_chunk($entries, $batchSize, true);
+                        $translatedEntries = [];
+
+                        foreach ($entryChunks as $chunkIndex => $chunk) {
+                            $context = $sourcePath . ' / ' . $sectionName;
+                            error_log('GLG: Translating batch ' . ($chunkIndex + 1) . '/' . count($entryChunks) . ' of ' . $context);
+
+                            $translated = $translator->translateBatch($chunk, $sourceLanguage, $targetLanguage, $context);
+                            $translatedEntries = array_merge($translatedEntries, $translated);
+                        }
+
+                        $translatedSections[$sectionName] = $translatedEntries;
+                        $totalEntriesProcessed += count($entries);
+                    }
+
+                    // Schreibe übersetzte Datei
+                    $translatedFileData = [
+                        'source' => $sourcePath,
+                        'sections' => $translatedSections,
+                        'latest_modification' => $sourceFileData['latest_modification']
+                    ];
+
+                    $writeResult = $writer->writeSourceFile($translatedFileData, $targetLanguage);
+                    if ($writeResult['success']) {
+                        $filesWritten++;
+                        error_log('GLG: Written: ' . $writeResult['file']);
+                    }
                 }
-
-                // Schreibe Sprachdateien
-                error_log('GLG: Writing language files for ' . $targetLanguage);
-                $writer->writeLanguageFiles($targetLanguage, $translatedData);
 
                 $results[] = [
                     'language' => $targetLanguage,
-                    'count' => count($translatedData)
+                    'files' => $filesWritten,
+                    'entries' => $totalEntriesProcessed
                 ];
+
+                error_log('GLG: Completed ' . $targetLanguage . ': ' . $filesWritten . ' files');
             }
 
             // Log Erfolg
-            $this->_logAction('generate', $sourceLanguage, implode(',', $targetLanguages), 'success', count($sourceData) . ' Einträge übersetzt');
+            $this->_logAction('generate', $sourceLanguage, implode(',', $targetLanguages), 'success', $totalEntriesProcessed . ' Einträge in ' . count($sourceFiles) . ' Dateien übersetzt');
 
             error_log('GLG: Generation completed successfully');
             $this->_jsonResponse([
