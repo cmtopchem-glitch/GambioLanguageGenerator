@@ -554,10 +554,10 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
         }
 
         try {
-            // Lade Helper-Klassen
-            require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGReader.php');
-            require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGTranslator.php');
-            require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGFileWriter.php');
+            // Lade Helper-Klassen (relative Pfade vom Controller aus)
+            require_once(__DIR__ . '/../../../includes/GLGReader.php');
+            require_once(__DIR__ . '/../../../includes/GLGTranslator.php');
+            require_once(__DIR__ . '/../../../includes/GLGFileWriter.php');
 
             $reader = new GLGReader();
             $translator = new GLGTranslator($settings);
@@ -645,9 +645,9 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
         }
 
         try {
-            // Lade Helper-Klassen
-            require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGReader.php');
-            require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGCompare.php');
+            // Lade Helper-Klassen (relative Pfade vom Controller aus)
+            require_once(__DIR__ . '/../../../includes/GLGReader.php');
+            require_once(__DIR__ . '/../../../includes/GLGCompare.php');
 
             $reader = new GLGReader();
             $comparer = new GLGCompare();
