@@ -528,20 +528,20 @@ class GLGCore {
         
         $since = xtc_db_input($since);
         
-        $query = "SELECT DISTINCT source, section_name, key_name 
-                  FROM language_phrases_cache 
+        $query = "SELECT DISTINCT source, section_name, phrase_name
+                  FROM language_phrases_cache
                   WHERE date_modified > '$since'
                   ORDER BY date_modified DESC
                   LIMIT 100";
-        
+
         $result = xtc_db_query($query);
         $changes = [];
-        
+
         while ($row = xtc_db_fetch_array($result)) {
             $changes[] = [
                 'source' => $row['source'],
                 'section' => $row['section_name'],
-                'key' => $row['key_name']
+                'key' => $row['phrase_name']
             ];
         }
         
