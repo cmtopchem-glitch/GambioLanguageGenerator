@@ -553,6 +553,10 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
         }
 
         try {
+            // Erhöhe Timeout für lange Übersetzungen
+            set_time_limit(3600); // 1 Stunde
+            ini_set('memory_limit', '512M');
+
             // Lade Helper-Klassen (relative Pfade vom Controller aus)
             require_once(__DIR__ . '/../../../includes/GLGReader.php');
             require_once(__DIR__ . '/../../../includes/GLGTranslator.php');
@@ -574,11 +578,12 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
             error_log('GLG: Found ' . count($sourceFiles) . ' source files');
 
             $results = [];
+            $totalEntriesProcessed = 0;
 
             // Übersetze in jede Zielsprache
             foreach ($targetLanguages as $targetLanguage) {
                 error_log('GLG: Translating to ' . $targetLanguage);
-
+                $filesWritten = 0;
                 $totalEntries = 0;
 
                 // Verarbeite jede Source-Datei einzeln
@@ -621,18 +626,26 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
                         'sections' => $translatedSections
                     ];
 
-                    $writer->writeSourceFile($writeData, $targetLanguage);
+                    $writeResult = $writer->writeSourceFile($writeData, $targetLanguage);
+                    if ($writeResult['success']) {
+                        $filesWritten++;
+                        error_log('GLG: Written: ' . $writeResult['file']);
+                    }
                     $totalEntries += count($translatedFlat);
                 }
 
                 $results[] = [
                     'language' => $targetLanguage,
-                    'count' => $totalEntries
+                    'files' => $filesWritten,
+                    'entries' => $totalEntries
                 ];
+
+                error_log('GLG: Completed ' . $targetLanguage . ': ' . $filesWritten . ' files, ' . $totalEntries . ' entries');
             }
 
             // Log Erfolg
-            $this->_logAction('generate', $sourceLanguage, implode(',', $targetLanguages), 'success', 'Übersetzung abgeschlossen');
+            $totalProcessed = array_sum(array_column($results, 'entries'));
+            $this->_logAction('generate', $sourceLanguage, implode(',', $targetLanguages), 'success', $totalProcessed . ' Einträge in ' . count($sourceFiles) . ' Dateien übersetzt');
 
             error_log('GLG: Generation completed successfully');
             $this->_jsonResponse([
