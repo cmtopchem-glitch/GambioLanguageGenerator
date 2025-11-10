@@ -10,6 +10,9 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
     {
         $this->pageTitle = 'Gambio Language Generator';
 
+        // Stelle sicher, dass die Settings-Tabelle existiert
+        $this->_ensureTablesExist();
+
         // Hole verfügbare Sprachen
         $languages = array();
         $query = "SELECT * FROM languages ORDER BY sort_order";
@@ -173,6 +176,9 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
     public function actionSave()
     {
+        // Stelle sicher, dass die Tabelle existiert
+        $this->_ensureTablesExist();
+
         $apiProvider = $this->_getPostData('apiProvider');
         $apiKey = $this->_getPostData('apiKey');
         $model = $this->_getPostData('model');
@@ -182,12 +188,18 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
             exit;
         }
 
-        $this->_saveSetting('apiProvider', $apiProvider);
-        $this->_saveSetting('apiKey', $apiKey);
-        $this->_saveSetting('model', $model);
+        try {
+            $this->_saveSetting('apiProvider', $apiProvider);
+            $this->_saveSetting('apiKey', $apiKey);
+            $this->_saveSetting('model', $model);
 
-        header('Location: admin.php?do=GambioLanguageGeneratorModuleCenterModule&success=1');
-        exit;
+            header('Location: admin.php?do=GambioLanguageGeneratorModuleCenterModule&success=1');
+            exit;
+        } catch (Exception $e) {
+            error_log('GLG Save Error: ' . $e->getMessage());
+            header('Location: admin.php?do=GambioLanguageGeneratorModuleCenterModule&error=1');
+            exit;
+        }
     }
 
     private function _saveSetting($key, $value)
@@ -215,6 +227,44 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
         header('Content-Type: application/json');
         echo json_encode($data);
         exit;
+    }
+
+    private function _ensureTablesExist()
+    {
+        // Settings Tabelle
+        $query = "CREATE TABLE IF NOT EXISTS `rz_glg_settings` (
+            `setting_key` varchar(100) NOT NULL,
+            `setting_value` text NOT NULL,
+            `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (`setting_key`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+        xtc_db_query($query);
+
+        // Log Tabelle
+        $query = "CREATE TABLE IF NOT EXISTS `rz_glg_log` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `date` datetime DEFAULT CURRENT_TIMESTAMP,
+            `action` varchar(50) NOT NULL,
+            `source_language` varchar(50) DEFAULT NULL,
+            `target_language` varchar(50) DEFAULT NULL,
+            `status` enum('success','error','running') DEFAULT 'running',
+            `details` text,
+            PRIMARY KEY (`id`),
+            KEY `date` (`date`),
+            KEY `status` (`status`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+        xtc_db_query($query);
+
+        // Update Tracking Tabelle
+        $query = "CREATE TABLE IF NOT EXISTS `rz_glg_update_tracking` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `last_update` datetime DEFAULT CURRENT_TIMESTAMP,
+            `source_language` varchar(50) NOT NULL,
+            `target_language` varchar(50) NOT NULL,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `languages` (`source_language`, `target_language`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+        xtc_db_query($query);
     }
 }
 }
