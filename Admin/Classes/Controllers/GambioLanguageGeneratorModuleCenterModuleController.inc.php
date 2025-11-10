@@ -187,6 +187,8 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
     public function actionSave()
     {
+        error_log('GLG: actionSave() called');
+
         // Stelle sicher, dass die Tabelle existiert
         $this->_ensureTablesExist();
 
@@ -194,16 +196,21 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
         $apiKey = $this->_getPostData('apiKey');
         $model = $this->_getPostData('model');
 
+        error_log('GLG: Received data - Provider: ' . $apiProvider . ', Model: ' . $model . ', API Key length: ' . strlen($apiKey));
+
         if (empty($apiKey)) {
+            error_log('GLG: API Key is empty, redirecting to error');
             header('Location: admin.php?do=GambioLanguageGeneratorModuleCenterModule&error=1');
             exit;
         }
 
         try {
+            error_log('GLG: Starting to save settings...');
             $this->_saveSetting('apiProvider', $apiProvider);
             $this->_saveSetting('apiKey', $apiKey);
             $this->_saveSetting('model', $model);
 
+            error_log('GLG: All settings saved successfully, redirecting to success');
             header('Location: admin.php?do=GambioLanguageGeneratorModuleCenterModule&success=1');
             exit;
         } catch (Exception $e) {
