@@ -103,7 +103,7 @@ SELECT * FROM language_phrases_cache WHERE source = 'admin/buttons.php'
 Wichtige Felder:
 - `source` - Quell-Datei (z.B. "admin/buttons.php")
 - `section_name` - Sektion innerhalb der Datei
-- `key_name` - Sprachvariable (z.B. "BUTTON_SAVE")
+- `phrase_name` - Sprachvariable (z.B. "BUTTON_SAVE")
 - `phrase_text` - Übersetzter Text
 - `date_modified` - Letzte Änderung
 
