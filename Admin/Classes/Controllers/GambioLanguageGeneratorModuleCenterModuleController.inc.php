@@ -26,18 +26,29 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
         $apiKey = '';
         $model = 'gpt-4o';
 
-        $query = "SELECT setting_key, setting_value FROM rz_glg_settings WHERE setting_key IN ('apiProvider', 'apiKey', 'model')";
-        $result = xtc_db_query($query);
-        while ($row = xtc_db_fetch_array($result)) {
-            if ($row['setting_key'] == 'apiProvider') {
-                $apiProvider = $row['setting_value'];
+        // Prüfe ob Tabelle existiert und lade Settings
+        $tableCheck = xtc_db_query("SHOW TABLES LIKE 'rz_glg_settings'");
+        if (xtc_db_num_rows($tableCheck) > 0) {
+            $query = "SELECT setting_key, setting_value FROM rz_glg_settings WHERE setting_key IN ('apiProvider', 'apiKey', 'model')";
+            $result = xtc_db_query($query);
+
+            error_log('GLG: Loading settings, found ' . xtc_db_num_rows($result) . ' rows');
+
+            while ($row = xtc_db_fetch_array($result)) {
+                error_log('GLG: Loaded setting: ' . $row['setting_key'] . ' = ' . substr($row['setting_value'], 0, 10) . '...');
+
+                if ($row['setting_key'] == 'apiProvider') {
+                    $apiProvider = $row['setting_value'];
+                }
+                if ($row['setting_key'] == 'apiKey') {
+                    $apiKey = $row['setting_value'];
+                }
+                if ($row['setting_key'] == 'model') {
+                    $model = $row['setting_value'];
+                }
             }
-            if ($row['setting_key'] == 'apiKey') {
-                $apiKey = $row['setting_value'];
-            }
-            if ($row['setting_key'] == 'model') {
-                $model = $row['setting_value'];
-            }
+        } else {
+            error_log('GLG: Settings table does not exist yet');
         }
 
         $success = $this->_getQueryParameter('success') == '1';
@@ -204,16 +215,27 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
     private function _saveSetting($key, $value)
     {
-        $query = "SELECT setting_key FROM rz_glg_settings WHERE setting_key = '" . xtc_db_input($key) . "'";
+        $key = xtc_db_input($key);
+        $value = xtc_db_input($value);
+
+        $query = "SELECT setting_key FROM rz_glg_settings WHERE setting_key = '$key'";
         $result = xtc_db_query($query);
 
         if (xtc_db_num_rows($result) > 0) {
-            $query = "UPDATE rz_glg_settings SET setting_value = '" . xtc_db_input($value) . "' WHERE setting_key = '" . xtc_db_input($key) . "'";
+            $query = "UPDATE rz_glg_settings SET setting_value = '$value', updated_at = NOW() WHERE setting_key = '$key'";
+            error_log("GLG: Updating setting $key");
         } else {
-            $query = "INSERT INTO rz_glg_settings (setting_key, setting_value) VALUES ('" . xtc_db_input($key) . "', '" . xtc_db_input($value) . "')";
+            $query = "INSERT INTO rz_glg_settings (setting_key, setting_value) VALUES ('$key', '$value')";
+            error_log("GLG: Inserting setting $key");
         }
 
-        xtc_db_query($query);
+        $success = xtc_db_query($query);
+        if (!$success) {
+            error_log("GLG: Failed to save setting $key");
+            throw new Exception("Failed to save setting: $key");
+        }
+
+        error_log("GLG: Successfully saved setting $key = " . substr($value, 0, 10) . "...");
     }
 
     public function actionGenerate()
