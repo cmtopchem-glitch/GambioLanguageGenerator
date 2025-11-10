@@ -17,15 +17,15 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AdminHttpViewC
     {
         // Basis-Pfad zum Modul
         $modulePath = dirname(dirname(dirname(__FILE__)));
-        
+
         // Sprachdatei laden
         $language = $_SESSION['language'] ?? 'german';
         $langFile = $modulePath . '/lang/' . $language . '/glg.php';
-        
+
         if (file_exists($langFile)) {
             include($langFile);
         }
-        
+
         // Lade vereinfachtes Admin-Interface (ohne doppelte Includes)
         ob_start();
         $adminFile = $modulePath . '/admin/glg_admin_simple.php';
@@ -36,10 +36,8 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AdminHttpViewC
             echo '<p>Modulepath: ' . $modulePath . '</p>';
         }
         $html = ob_get_clean();
-        
-        // Setze Output Buffer direkt (wie beim AI Product Optimizer)
-        $this->v_output_buffer = $html;
-        
-        return $this->v_output_buffer;
+
+        // Erstelle korrektes Response-Objekt für Gambio
+        return MainFactory::create('AdminLayoutHttpControllerResponse', $html);
     }
 }
