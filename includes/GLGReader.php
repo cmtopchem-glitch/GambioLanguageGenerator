@@ -51,18 +51,18 @@ class GLGReader {
     private function readCoreFiles($language) {
         $language = xtc_db_input($language);
         
-        $query = "SELECT 
+        $query = "SELECT
                     source,
                     section_name,
-                    key_name,
+                    phrase_name,
                     phrase_text,
                     date_modified
                   FROM language_phrases_cache
-                  WHERE languages_id = (
+                  WHERE language_id = (
                     SELECT languages_id FROM languages WHERE directory = '$language'
                   )
                   AND source NOT LIKE 'GXModules/%'
-                  ORDER BY source, section_name, key_name";
+                  ORDER BY source, section_name, phrase_name";
         
         return $this->executeAndGroup($query);
     }
@@ -86,19 +86,19 @@ class GLGReader {
             $moduleFilter = ' AND (' . implode(' OR ', $likeConditions) . ')';
         }
         
-        $query = "SELECT 
+        $query = "SELECT
                     source,
                     section_name,
-                    key_name,
+                    phrase_name,
                     phrase_text,
                     date_modified
                   FROM language_phrases_cache
-                  WHERE languages_id = (
+                  WHERE language_id = (
                     SELECT languages_id FROM languages WHERE directory = '$language'
                   )
                   AND source LIKE 'GXModules/%'
                   $moduleFilter
-                  ORDER BY source, section_name, key_name";
+                  ORDER BY source, section_name, phrase_name";
         
         return $this->executeAndGroup($query);
     }
@@ -126,7 +126,7 @@ class GLGReader {
                 $data[$source]['sections'][$section] = [];
             }
             
-            $data[$source]['sections'][$section][$row['key_name']] = $row['phrase_text'];
+            $data[$source]['sections'][$section][$row['phrase_name']] = $row['phrase_text'];
             
             // Aktualisiere latest_modification wenn neuer
             if (strtotime($row['date_modified']) > strtotime($data[$source]['latest_modification'])) {
@@ -148,18 +148,18 @@ class GLGReader {
         $since = xtc_db_input($since);
         $language = xtc_db_input($language);
         
-        $query = "SELECT 
+        $query = "SELECT
                     source,
                     section_name,
-                    key_name,
+                    phrase_name,
                     phrase_text,
                     date_modified
                   FROM language_phrases_cache
-                  WHERE languages_id = (
+                  WHERE language_id = (
                     SELECT languages_id FROM languages WHERE directory = '$language'
                   )
                   AND date_modified > '$since'
-                  ORDER BY source, section_name, key_name";
+                  ORDER BY source, section_name, phrase_name";
         
         return $this->executeAndGroup($query);
     }
@@ -175,7 +175,7 @@ class GLGReader {
         
         $query = "SELECT DISTINCT source
                   FROM language_phrases_cache
-                  WHERE languages_id = (
+                  WHERE language_id = (
                     SELECT languages_id FROM languages WHERE directory = '$language'
                   )
                   ORDER BY source";
@@ -201,7 +201,7 @@ class GLGReader {
         $language = xtc_db_input($language);
         
         $whereConditions = [
-            "languages_id = (SELECT languages_id FROM languages WHERE directory = '$language')"
+            "language_id = (SELECT languages_id FROM languages WHERE directory = '$language')"
         ];
         
         if (isset($options['includeCoreFiles']) && !$options['includeCoreFiles']) {
@@ -252,7 +252,7 @@ class GLGReader {
         // Gesamt
         $query = "SELECT COUNT(*) as total
                   FROM language_phrases_cache
-                  WHERE languages_id = (
+                  WHERE language_id = (
                     SELECT languages_id FROM languages WHERE directory = '$language'
                   )";
         $result = xtc_db_query($query);
@@ -262,7 +262,7 @@ class GLGReader {
         // Core
         $query = "SELECT COUNT(*) as total
                   FROM language_phrases_cache
-                  WHERE languages_id = (
+                  WHERE language_id = (
                     SELECT languages_id FROM languages WHERE directory = '$language'
                   )
                   AND source NOT LIKE 'GXModules/%'";
@@ -276,7 +276,7 @@ class GLGReader {
         // Source-Dateien
         $query = "SELECT COUNT(DISTINCT source) as total
                   FROM language_phrases_cache
-                  WHERE languages_id = (
+                  WHERE language_id = (
                     SELECT languages_id FROM languages WHERE directory = '$language'
                   )";
         $result = xtc_db_query($query);
@@ -286,7 +286,7 @@ class GLGReader {
         // Module
         $query = "SELECT COUNT(DISTINCT SUBSTRING_INDEX(SUBSTRING_INDEX(source, '/', 2), '/', -1)) as total
                   FROM language_phrases_cache
-                  WHERE languages_id = (
+                  WHERE language_id = (
                     SELECT languages_id FROM languages WHERE directory = '$language'
                   )
                   AND source LIKE 'GXModules/%'";
