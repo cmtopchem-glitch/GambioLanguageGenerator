@@ -398,7 +398,6 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
                 var sourceLanguage = $('#glg-compare-source-language').val();
                 var targetLanguage = $('#glg-compare-target-language').val();
-
                 if (!sourceLanguage) {
                     alert('Bitte wählen Sie eine Quellsprache aus');
                     return;
@@ -558,16 +557,16 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
             set_time_limit(3600); // 1 Stunde
             ini_set('memory_limit', '512M');
 
-            // Lade Helper-Klassen
-            require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGReader.php');
-            require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGTranslator.php');
-            require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGFileWriter.php');
+            // Lade Helper-Klassen (relative Pfade vom Controller aus)
+            require_once(__DIR__ . '/../../../includes/GLGReader.php');
+            require_once(__DIR__ . '/../../../includes/GLGTranslator.php');
+            require_once(__DIR__ . '/../../../includes/GLGFileWriter.php');
 
             $reader = new GLGReader();
             $translator = new GLGTranslator($settings);
             $writer = new GLGFileWriter();
 
-            // Lese Quellsprache - gibt verschachtelte Struktur zurück
+            // Lese Quellsprache (gruppiert nach Dateien)
             error_log('GLG: Reading source language data...');
             $sourceFiles = $reader->readLanguageData($sourceLanguage);
 
@@ -585,59 +584,68 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
             foreach ($targetLanguages as $targetLanguage) {
                 error_log('GLG: Translating to ' . $targetLanguage);
                 $filesWritten = 0;
+                $totalEntries = 0;
 
-                // Verarbeite jede Source-Datei
-                foreach ($sourceFiles as $sourcePath => $sourceFileData) {
-                    error_log('GLG: Processing file: ' . $targetLanguage . '/' . $sourcePath);
+                // Verarbeite jede Source-Datei einzeln
+                foreach ($sourceFiles as $sourceFile => $sourceData) {
+                    error_log('GLG: Processing file: ' . $sourceFile);
 
-                    $sections = $sourceFileData['sections'];
-                    $translatedSections = [];
-
-                    // Verarbeite jede Sektion
-                    foreach ($sections as $sectionName => $entries) {
-                        // Übersetze Einträge in dieser Sektion
-                        // Bei vielen Einträgen in Batches aufteilen (max 50 pro Request)
-                        $batchSize = 50;
-                        $entryChunks = array_chunk($entries, $batchSize, true);
-                        $translatedEntries = [];
-
-                        foreach ($entryChunks as $chunkIndex => $chunk) {
-                            $context = $sourcePath . ' / ' . $sectionName;
-                            error_log('GLG: Translating batch ' . ($chunkIndex + 1) . '/' . count($entryChunks) . ' of ' . $context);
-
-                            $translated = $translator->translateBatch($chunk, $sourceLanguage, $targetLanguage, $context);
-                            $translatedEntries = array_merge($translatedEntries, $translated);
+                    // Flatten sections into single array for translation
+                    $flatEntries = [];
+                    foreach ($sourceData['sections'] as $sectionName => $entries) {
+                        foreach ($entries as $key => $value) {
+                            $flatKey = $sectionName . '::' . $key;
+                            $flatEntries[$flatKey] = $value;
                         }
-
-                        $translatedSections[$sectionName] = $translatedEntries;
-                        $totalEntriesProcessed += count($entries);
                     }
 
-                    // Schreibe übersetzte Datei
-                    $translatedFileData = [
-                        'source' => $sourcePath,
-                        'sections' => $translatedSections,
-                        'latest_modification' => $sourceFileData['latest_modification']
+                    // Translate in batches
+                    $batchSize = 50;
+                    $chunks = array_chunk($flatEntries, $batchSize, true);
+                    $translatedFlat = [];
+
+                    foreach ($chunks as $index => $chunk) {
+                        error_log('GLG: Translating batch ' . ($index + 1) . '/' . count($chunks) . ' of ' . $sourceFile);
+                        $translated = $translator->translateBatch($chunk, $sourceLanguage, $targetLanguage, 'E-Commerce: ' . $sourceFile);
+                        $translatedFlat = array_merge($translatedFlat, $translated);
+                    }
+
+                    // Reconstruct section structure
+                    $translatedSections = [];
+                    foreach ($translatedFlat as $flatKey => $translatedValue) {
+                        list($sectionName, $key) = explode('::', $flatKey, 2);
+                        if (!isset($translatedSections[$sectionName])) {
+                            $translatedSections[$sectionName] = [];
+                        }
+                        $translatedSections[$sectionName][$key] = $translatedValue;
+                    }
+
+                    // Write file
+                    $writeData = [
+                        'source' => $sourceFile,
+                        'sections' => $translatedSections
                     ];
 
-                    $writeResult = $writer->writeSourceFile($translatedFileData, $targetLanguage);
+                    $writeResult = $writer->writeSourceFile($writeData, $targetLanguage);
                     if ($writeResult['success']) {
                         $filesWritten++;
                         error_log('GLG: Written: ' . $writeResult['file']);
                     }
+                    $totalEntries += count($translatedFlat);
                 }
 
                 $results[] = [
                     'language' => $targetLanguage,
                     'files' => $filesWritten,
-                    'entries' => $totalEntriesProcessed
+                    'entries' => $totalEntries
                 ];
 
-                error_log('GLG: Completed ' . $targetLanguage . ': ' . $filesWritten . ' files');
+                error_log('GLG: Completed ' . $targetLanguage . ': ' . $filesWritten . ' files, ' . $totalEntries . ' entries');
             }
 
             // Log Erfolg
-            $this->_logAction('generate', $sourceLanguage, implode(',', $targetLanguages), 'success', $totalEntriesProcessed . ' Einträge in ' . count($sourceFiles) . ' Dateien übersetzt');
+            $totalProcessed = array_sum(array_column($results, 'entries'));
+            $this->_logAction('generate', $sourceLanguage, implode(',', $targetLanguages), 'success', $totalProcessed . ' Einträge in ' . count($sourceFiles) . ' Dateien übersetzt');
 
             error_log('GLG: Generation completed successfully');
             $this->_jsonResponse([
@@ -680,24 +688,37 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
         }
 
         try {
-            // Lade Helper-Klassen
-            require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGCompare.php');
+            // Lade Helper-Klassen (relative Pfade vom Controller aus)
+            require_once(__DIR__ . '/../../../includes/GLGCompare.php');
 
             $comparer = new GLGCompare();
 
-            // Vergleiche die Sprachen
+            // Vergleiche beide Sprachen
             error_log('GLG: Comparing languages...');
             $comparison = $comparer->compareLanguages($sourceLanguage, $targetLanguage);
 
-            error_log('GLG: Comparison completed. Missing: ' . $comparison['missing_entries']);
+            $sourceCount = $comparison['total_source_entries'];
+            $targetCount = $comparison['total_target_entries'];
+            $missingCount = $comparison['missing_entries'];
+
+            $completion = $sourceCount > 0
+                ? round((($sourceCount - $missingCount) / $sourceCount) * 100, 1)
+                : 100;
+
+            error_log('GLG: Comparison completed. Missing: ' . $missingCount);
+
+            // Extrahiere nur die Keys für die Anzeige
+            $missingKeys = array_map(function($item) {
+                return $item['file'] . ' > ' . $item['section'] . ' > ' . $item['key'];
+            }, $comparison['missing_keys']);
 
             $this->_jsonResponse([
                 'success' => true,
-                'sourceCount' => $comparison['total_source_entries'],
-                'targetCount' => $comparison['total_target_entries'],
-                'missingCount' => $comparison['missing_entries'],
-                'completion' => $comparison['statistics']['completion_percentage'],
-                'missing' => array_slice($comparison['missing_keys'], 0, 100) // Nur erste 100 zeigen
+                'sourceCount' => $sourceCount,
+                'targetCount' => $targetCount,
+                'missingCount' => $missingCount,
+                'completion' => $completion,
+                'missing' => array_slice($missingKeys, 0, 100) // Nur erste 100 zeigen
             ]);
 
         } catch (Exception $e) {
