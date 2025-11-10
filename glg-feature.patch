@@ -1,0 +1,46 @@
+From c503a356ac0d2edd5b642966695ec49025dec24a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 10 Nov 2025 22:58:14 +0000
+Subject: [PATCH] Fix helper class paths to use relative paths
+
+Changed from absolute DIR_FS_CATALOG paths to relative __DIR__ paths
+to properly load helper classes regardless of module installation location.
+---
+ ...geGeneratorModuleCenterModuleController.inc.php | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/Admin/Classes/Controllers/GambioLanguageGeneratorModuleCenterModuleController.inc.php b/Admin/Classes/Controllers/GambioLanguageGeneratorModuleCenterModuleController.inc.php
+index 3fba781..fc6dd16 100644
+--- a/Admin/Classes/Controllers/GambioLanguageGeneratorModuleCenterModuleController.inc.php
++++ b/Admin/Classes/Controllers/GambioLanguageGeneratorModuleCenterModuleController.inc.php
+@@ -554,10 +554,10 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
+         }
+ 
+         try {
+-            // Lade Helper-Klassen
+-            require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGReader.php');
+-            require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGTranslator.php');
+-            require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGFileWriter.php');
++            // Lade Helper-Klassen (relative Pfade vom Controller aus)
++            require_once(__DIR__ . '/../../../includes/GLGReader.php');
++            require_once(__DIR__ . '/../../../includes/GLGTranslator.php');
++            require_once(__DIR__ . '/../../../includes/GLGFileWriter.php');
+ 
+             $reader = new GLGReader();
+             $translator = new GLGTranslator($settings);
+@@ -645,9 +645,9 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
+         }
+ 
+         try {
+-            // Lade Helper-Klassen
+-            require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGReader.php');
+-            require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGCompare.php');
++            // Lade Helper-Klassen (relative Pfade vom Controller aus)
++            require_once(__DIR__ . '/../../../includes/GLGReader.php');
++            require_once(__DIR__ . '/../../../includes/GLGCompare.php');
+ 
+             $reader = new GLGReader();
+             $comparer = new GLGCompare();
+-- 
+2.43.0
+Shell cwd was reset to /home/user/ai-product-optimizer
