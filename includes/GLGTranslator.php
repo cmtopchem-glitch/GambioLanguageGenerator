@@ -52,12 +52,15 @@ class GLGTranslator {
     private function translateWithOpenAI($entries, $sourceLanguage, $targetLanguage, $context = '') {
         $sourceLanguageName = $this->getLanguageName($sourceLanguage);
         $targetLanguageName = $this->getLanguageName($targetLanguage);
-        
+
+        error_log("GLGTranslator: Translating from '$sourceLanguage' ($sourceLanguageName) to '$targetLanguage' ($targetLanguageName)");
+        error_log("GLGTranslator: Context: $context, Entries count: " . count($entries));
+
         // Erstelle JSON für die Übersetzung
         $sourceJson = json_encode($entries, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-        
+
         // System Prompt
-        $systemPrompt = "Du bist ein professioneller Übersetzer für E-Commerce Software. 
+        $systemPrompt = "Du bist ein professioneller Übersetzer für E-Commerce Software.
 Übersetze die folgenden Sprachvariablen von $sourceLanguageName nach $targetLanguageName.
 
 WICHTIGE REGELN:
@@ -234,9 +237,22 @@ Kontext: $context";
             'russian' => 'Русский',
             'turkish' => 'Türkçe',
             'chinese' => '中文',
-            'japanese' => '日本語'
+            'japanese' => '日本語',
+            'portuguese' => 'Português',
+            'danish' => 'Dansk',
+            'finnish' => 'Suomi',
+            'norwegian' => 'Norsk',
+            'swedish' => 'Svenska',
+            'czech' => 'Čeština',
+            'slovak' => 'Slovenčina',
+            'hungarian' => 'Magyar',
+            'romanian' => 'Română',
+            'croatian' => 'Hrvatski',
+            'greek' => 'Ελληνικά',
+            'bulgarian' => 'Български',
+            'ukrainian' => 'Українська'
         ];
-        
+
         return $mapping[$directory] ?? ucfirst($directory);
     }
     
