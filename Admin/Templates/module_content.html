@@ -9,13 +9,14 @@
             padding-top: 20px;
         }
 
-        /* Ensure tabs work properly */
+        /* Ensure tabs work properly - hide all by default */
         .glg-container .tab-pane {
-            display: none !important;
+            display: none;
         }
 
+        /* Show active tab */
         .glg-container .tab-pane.active {
-            display: block !important;
+            display: block;
         }
 
         .glg-container .nav-tabs {
@@ -76,13 +77,13 @@
     <!-- Bootstrap Tabs -->
     <ul class="nav nav-tabs" role="tablist">
         <li role="presentation" class="active">
-            <a href="#generate" role="tab" data-toggle="tab"><i class="fa fa-language"></i> Sprachen generieren</a>
+            <a href="#generate" onclick="glgSwitchTab('generate'); return false;"><i class="fa fa-language"></i> Sprachen generieren</a>
         </li>
         <li role="presentation">
-            <a href="#compare" role="tab" data-toggle="tab"><i class="fa fa-search"></i> Vergleichen</a>
+            <a href="#compare" onclick="glgSwitchTab('compare'); return false;"><i class="fa fa-search"></i> Vergleichen</a>
         </li>
         <li role="presentation">
-            <a href="#settings" role="tab" data-toggle="tab"><i class="fa fa-cog"></i> Einstellungen</a>
+            <a href="#settings" onclick="glgSwitchTab('settings'); return false;"><i class="fa fa-cog"></i> Einstellungen</a>
         </li>
     </ul>
 
@@ -276,6 +277,19 @@
 
 <!-- JavaScript für dynamische Interaktionen -->
 <script>
+// Tab-Switching Funktion (ohne Bootstrap JavaScript)
+function glgSwitchTab(tabId) {
+    console.log('GLG: Switching to tab:', tabId);
+
+    // Alle Tabs und Panes deaktivieren
+    jQuery('.glg-container .nav-tabs li').removeClass('active');
+    jQuery('.glg-container .tab-pane').removeClass('active').hide();
+
+    // Aktiven Tab und Pane aktivieren
+    jQuery('.glg-container .nav-tabs a[href="#' + tabId + '"]').parent().addClass('active');
+    jQuery('#' + tabId).addClass('active').show();
+}
+
 jQuery(document).ready(function($) {
     // Funktion: Entferne Quellsprache aus Zielsprachen
     function updateTargetLanguages() {
