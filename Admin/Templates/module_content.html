@@ -1,1 +1,441 @@
-{$MODULE_CONTENT}
+<div class="glg-container">
+    <style>
+        /* Minimal custom styles for inline ModuleCenter display */
+        .glg-container {
+            padding: 20px 0;
+        }
+
+        .glg-container .tab-content {
+            padding-top: 20px;
+        }
+
+        /* Ensure tabs work properly */
+        .glg-container .tab-pane {
+            display: none !important;
+        }
+
+        .glg-container .tab-pane.active {
+            display: block !important;
+        }
+
+        .glg-container .nav-tabs {
+            margin-bottom: 20px;
+            border-bottom: 2px solid #ddd;
+            list-style: none;
+            padding: 0;
+        }
+
+        .glg-container .nav-tabs li {
+            display: inline-block;
+            margin-bottom: -2px;
+        }
+
+        .glg-container .nav-tabs li a {
+            display: block;
+            padding: 10px 20px;
+            margin-right: 2px;
+            text-decoration: none;
+            color: #555;
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-bottom: 2px solid #ddd;
+            border-radius: 4px 4px 0 0;
+            transition: all 0.2s;
+        }
+
+        .glg-container .nav-tabs li a:hover {
+            background-color: #e9e9e9;
+            border-bottom-color: #ddd;
+        }
+
+        .glg-container .nav-tabs li.active a {
+            color: #000;
+            background-color: #fff;
+            border-bottom-color: #fff;
+            font-weight: bold;
+            cursor: default;
+        }
+
+        .glg-container .nav-tabs li a i {
+            margin-right: 5px;
+        }
+
+        .glg-container .btn i {
+            margin-right: 5px;
+        }
+    </style>
+
+    {if $success}
+        <div class="alert alert-success">Einstellungen erfolgreich gespeichert!</div>
+    {/if}
+
+    {if $error}
+        <div class="alert alert-danger">Fehler beim Speichern der Einstellungen!</div>
+    {/if}
+
+    <!-- Bootstrap Tabs -->
+    <ul class="nav nav-tabs" role="tablist">
+        <li role="presentation" class="active">
+            <a href="#generate" role="tab" data-toggle="tab"><i class="fa fa-language"></i> Sprachen generieren</a>
+        </li>
+        <li role="presentation">
+            <a href="#compare" role="tab" data-toggle="tab"><i class="fa fa-search"></i> Vergleichen</a>
+        </li>
+        <li role="presentation">
+            <a href="#settings" role="tab" data-toggle="tab"><i class="fa fa-cog"></i> Einstellungen</a>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+
+        <!-- Generate Tab -->
+        <div role="tabpanel" class="tab-pane active" id="generate">
+            <form id="glgGenerateForm" class="form-horizontal" method="post" action="admin.php?do=GambioLanguageGeneratorModuleCenterModule&action=generate">
+
+                <div class="form-group">
+                    <label class="col-sm-2 control-label">Quellsprache</label>
+                    <div class="col-sm-4">
+                        <select class="form-control" name="sourceLanguage" id="glg-source-language">
+                            <option value="">Bitte wählen...</option>
+                            {foreach $languages as $lang}
+                                <option value="{$lang.directory}" {if $lang.directory == 'german'}selected{/if}>
+                                    {$lang.name}
+                                </option>
+                            {/foreach}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-2 control-label">Zielsprachen</label>
+                    <div class="col-sm-10">
+                        {foreach $languages as $lang}
+                            <div class="checkbox">
+                                <label>
+                                    <input type="checkbox" name="targetLanguages[]" value="{$lang.directory}">
+                                    {$lang.name}
+                                </label>
+                            </div>
+                        {/foreach}
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-sm-offset-2 col-sm-10">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fa fa-play"></i> Sprachen generieren
+                        </button>
+                    </div>
+                </div>
+
+            </form>
+
+            <div id="glg-generate-messages"></div>
+        </div>
+
+        <!-- Compare Tab -->
+        <div role="tabpanel" class="tab-pane" id="compare">
+            <h3>Sprachen vergleichen</h3>
+            <p class="text-muted">Vergleiche die Vollständigkeit der Übersetzungen zwischen zwei Sprachen.</p>
+
+            <form id="glgCompareForm" class="form-horizontal" method="post" action="admin.php?do=GambioLanguageGeneratorModuleCenterModule&action=compare">
+
+                <div class="form-group">
+                    <label class="col-sm-2 control-label">Quellsprache</label>
+                    <div class="col-sm-4">
+                        <select class="form-control" name="sourceLanguage" id="glg-compare-source-language">
+                            <option value="">Bitte wählen...</option>
+                            {foreach $languages as $lang}
+                                <option value="{$lang.directory}" {if $lang.directory == 'german'}selected{/if}>
+                                    {$lang.name}
+                                </option>
+                            {/foreach}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-2 control-label">Zielsprache</label>
+                    <div class="col-sm-4">
+                        <select class="form-control" name="targetLanguage" id="glg-compare-target-language">
+                            <option value="">Bitte wählen...</option>
+                            {foreach $languages as $lang}
+                                <option value="{$lang.directory}">
+                                    {$lang.name}
+                                </option>
+                            {/foreach}
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-sm-offset-2 col-sm-10">
+                        <button type="submit" class="btn btn-info btn-lg">
+                            <i class="fa fa-search"></i> Vergleichen
+                        </button>
+                    </div>
+                </div>
+
+            </form>
+
+            <div id="glg-compare-messages"></div>
+            <div id="glg-compare-results" style="display: none; margin-top: 20px;">
+                <h4>Ergebnisse</h4>
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="panel panel-default">
+                            <div class="panel-body text-center">
+                                <h2 id="glg-source-count">-</h2>
+                                <p>Einträge in Quellsprache</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="panel panel-default">
+                            <div class="panel-body text-center">
+                                <h2 id="glg-target-count">-</h2>
+                                <p>Einträge in Zielsprache</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="panel panel-danger">
+                            <div class="panel-body text-center">
+                                <h2 id="glg-missing-count">-</h2>
+                                <p>Fehlende Übersetzungen</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="panel panel-success">
+                            <div class="panel-body text-center">
+                                <h2 id="glg-completion">-</h2>
+                                <p>Vollständigkeit</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress">
+                    <div class="progress-bar progress-bar-success" id="glg-progress-bar" style="width: 0%">
+                        <span id="glg-progress-text">0%</span>
+                    </div>
+                </div>
+
+                <div id="glg-missing-details"></div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div role="tabpanel" class="tab-pane" id="settings">
+            <form id="glgSettingsForm" class="form-horizontal" method="post" action="admin.php?do=GambioLanguageGeneratorModuleCenterModule&action=save">
+
+                <h3>API-Einstellungen</h3>
+
+                <div class="form-group">
+                    <label class="col-sm-2 control-label">API Provider</label>
+                    <div class="col-sm-4">
+                        <select class="form-control" name="apiProvider">
+                            <option value="openai" {if $apiProvider == 'openai'}selected{/if}>OpenAI</option>
+                            <option value="deepl" {if $apiProvider == 'deepl'}selected{/if}>DeepL</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-2 control-label">API Key</label>
+                    <div class="col-sm-6">
+                        <input type="password" class="form-control" name="apiKey" id="glg-api-key" value="{$apiKey}">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-2 control-label">Modell</label>
+                    <div class="col-sm-4">
+                        <select class="form-control" name="model">
+                            <option value="gpt-4o" {if $model == 'gpt-4o'}selected{/if}>GPT-4o</option>
+                            <option value="gpt-4o-mini" {if $model == 'gpt-4o-mini'}selected{/if}>GPT-4o Mini</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-sm-offset-2 col-sm-10">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fa fa-save"></i> Einstellungen speichern
+                        </button>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+
+    </div>
+</div>
+
+<!-- JavaScript für dynamische Interaktionen -->
+<script>
+jQuery(document).ready(function($) {
+    // Funktion: Entferne Quellsprache aus Zielsprachen
+    function updateTargetLanguages() {
+        var sourceLanguage = $('#glg-source-language').val();
+
+        // Alle Checkboxen wieder aktivieren
+        $('input[name="targetLanguages[]"]').prop('disabled', false);
+        $('input[name="targetLanguages[]"]').closest('label').removeClass('text-muted');
+
+        // Quellsprache deaktivieren
+        if (sourceLanguage) {
+            $('input[name="targetLanguages[]"][value="' + sourceLanguage + '"]').prop('disabled', true);
+            $('input[name="targetLanguages[]"][value="' + sourceLanguage + '"]').prop('checked', false);
+            $('input[name="targetLanguages[]"][value="' + sourceLanguage + '"]').closest('label').addClass('text-muted');
+        }
+    }
+
+    // Event Listener für Quellsprache
+    $('#glg-source-language').on('change', updateTargetLanguages);
+
+    // Bei Seitenladung ausführen
+    updateTargetLanguages();
+
+    // Gleiches für Compare Tab
+    function updateCompareTargetLanguage() {
+        var sourceLanguage = $('#glg-compare-source-language').val();
+
+        // Alle Optionen wieder aktivieren
+        $('#glg-compare-target-language option').prop('disabled', false);
+
+        // Quellsprache deaktivieren
+        if (sourceLanguage) {
+            $('#glg-compare-target-language option[value="' + sourceLanguage + '"]').prop('disabled', true);
+
+            // Wenn die deaktivierte Option ausgewählt war, zurücksetzen
+            if ($('#glg-compare-target-language').val() === sourceLanguage) {
+                $('#glg-compare-target-language').val('');
+            }
+        }
+    }
+
+    $('#glg-compare-source-language').on('change', updateCompareTargetLanguage);
+    updateCompareTargetLanguage();
+
+    // Generate Form Handler
+    $('#glgGenerateForm').on('submit', function(e) {
+        e.preventDefault();
+
+        var sourceLanguage = $('#glg-source-language').val();
+        var targetLanguages = [];
+        $('input[name="targetLanguages[]"]:checked').each(function() {
+            targetLanguages.push($(this).val());
+        });
+
+        if (!sourceLanguage) {
+            alert('Bitte wählen Sie eine Quellsprache aus');
+            return;
+        }
+
+        if (targetLanguages.length === 0) {
+            alert('Bitte wählen Sie mindestens eine Zielsprache aus');
+            return;
+        }
+
+        $('#glg-generate-messages').html('<div class="alert alert-info"><i class="fa fa-spinner fa-spin"></i> Übersetzung läuft... Dies kann einige Minuten dauern.</div>');
+
+        $.ajax({
+            url: 'admin.php?do=GambioLanguageGeneratorModuleCenterModule&action=generate',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                sourceLanguage: sourceLanguage,
+                targetLanguages: targetLanguages
+            },
+            success: function(response) {
+                if (response.success) {
+                    var alertClass = response.errors && response.errors.length > 0 ? 'alert-warning' : 'alert-success';
+                    var html = '<div class="alert ' + alertClass + '"><strong>' + (response.errors ? 'Teilweise erfolgreich!' : 'Erfolg!') + '</strong> ' + response.message + '</div>';
+                    html += '<table class="table table-striped"><thead><tr><th>Sprache</th><th>Dateien</th><th>Einträge</th><th>Fehler</th></tr></thead><tbody>';
+                    $.each(response.results, function(i, result) {
+                        html += '<tr><td>' + result.language + '</td><td>' + result.files + '</td><td>' + result.entries + '</td><td>' + (result.errors || 0) + '</td></tr>';
+                    });
+                    html += '</tbody></table>';
+                    if (response.errors && response.errors.length > 0) {
+                        html += '<div class="panel panel-warning"><div class="panel-heading">Fehler (erste 10):</div><div class="panel-body"><ul>';
+                        $.each(response.errors, function(i, error) {
+                            html += '<li>' + error + '</li>';
+                        });
+                        html += '</ul></div></div>';
+                    }
+                    $('#glg-generate-messages').html(html);
+                } else {
+                    $('#glg-generate-messages').html('<div class="alert alert-danger"><strong>Fehler:</strong> ' + response.error + '</div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                $('#glg-generate-messages').html('<div class="alert alert-danger"><strong>Fehler:</strong> ' + error + '</div>');
+            }
+        });
+    });
+
+    // Compare Form Handler
+    $('#glgCompareForm').on('submit', function(e) {
+        e.preventDefault();
+
+        var sourceLanguage = $('#glg-compare-source-language').val();
+        var targetLanguage = $('#glg-compare-target-language').val();
+        if (!sourceLanguage) {
+            alert('Bitte wählen Sie eine Quellsprache aus');
+            return;
+        }
+
+        if (!targetLanguage) {
+            alert('Bitte wählen Sie eine Zielsprache aus');
+            return;
+        }
+
+        $('#glg-compare-messages').html('<div class="alert alert-info"><i class="fa fa-spinner fa-spin"></i> Vergleiche Sprachen...</div>');
+        $('#glg-compare-results').hide();
+
+        $.ajax({
+            url: 'admin.php?do=GambioLanguageGeneratorModuleCenterModule&action=compare',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                sourceLanguage: sourceLanguage,
+                targetLanguage: targetLanguage
+            },
+            success: function(response) {
+                $('#glg-compare-messages').html('');
+
+                if (response.success) {
+                    $('#glg-source-count').text(response.sourceCount);
+                    $('#glg-target-count').text(response.targetCount);
+                    $('#glg-missing-count').text(response.missingCount);
+                    $('#glg-completion').text(response.completion + '%');
+                    $('#glg-progress-bar').css('width', response.completion + '%');
+                    $('#glg-progress-text').text(response.completion + '%');
+
+                    // Fehlende Einträge anzeigen
+                    if (response.missing.length > 0) {
+                        var html = '<h5>Fehlende Übersetzungen (erste 100):</h5><ul class="list-group">';
+                        $.each(response.missing, function(i, key) {
+                            html += '<li class="list-group-item"><code>' + key + '</code></li>';
+                        });
+                        html += '</ul>';
+                        $('#glg-missing-details').html(html);
+                    } else {
+                        $('#glg-missing-details').html('<div class="alert alert-success">Alle Übersetzungen vorhanden!</div>');
+                    }
+
+                    $('#glg-compare-results').show();
+                } else {
+                    $('#glg-compare-messages').html('<div class="alert alert-danger"><strong>Fehler:</strong> ' + response.error + '</div>');
+                }
+            },
+            error: function(xhr, status, error) {
+                $('#glg-compare-messages').html('<div class="alert alert-danger"><strong>Fehler:</strong> ' + error + '</div>');
+            }
+        });
+    });
+});
+</script>
