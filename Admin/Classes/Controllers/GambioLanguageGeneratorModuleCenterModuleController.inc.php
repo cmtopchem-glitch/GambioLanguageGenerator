@@ -82,11 +82,10 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
         error_log('GLG: _renderInterface() returned, HTML length: ' . strlen($html));
 
-        // Output HTML directly and exit - ModuleCenterModule pattern
-        error_log('GLG: Outputting HTML and exiting');
-        header('Content-Type: text/html; charset=UTF-8');
-        echo $html;
-        exit;
+        // Return MainContentBlock for proper ModuleCenter integration
+        error_log('GLG: Creating MainContentBlock');
+        $mainContentBlock = new MainContentBlock($html);
+        return $mainContentBlock;
     }
 
     private function _renderInterface($languages, $apiProvider, $apiKey, $model, $success, $error)
@@ -386,12 +385,20 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
                     },
                     success: function(response) {
                         if (response.success) {
-                            var html = '<div class="alert alert-success"><strong>Erfolg!</strong> ' + response.message + '</div>';
-                            html += '<table class="table table-striped"><thead><tr><th>Sprache</th><th>Anzahl Einträge</th></tr></thead><tbody>';
+                            var alertClass = response.errors && response.errors.length > 0 ? 'alert-warning' : 'alert-success';
+                            var html = '<div class="alert ' + alertClass + '"><strong>' + (response.errors ? 'Teilweise erfolgreich!' : 'Erfolg!') + '</strong> ' + response.message + '</div>';
+                            html += '<table class="table table-striped"><thead><tr><th>Sprache</th><th>Dateien</th><th>Einträge</th><th>Fehler</th></tr></thead><tbody>';
                             $.each(response.results, function(i, result) {
-                                html += '<tr><td>' + result.language + '</td><td>' + result.count + '</td></tr>';
+                                html += '<tr><td>' + result.language + '</td><td>' + result.files + '</td><td>' + result.entries + '</td><td>' + (result.errors || 0) + '</td></tr>';
                             });
                             html += '</tbody></table>';
+                            if (response.errors && response.errors.length > 0) {
+                                html += '<div class="panel panel-warning"><div class="panel-heading">Fehler (erste 10):</div><div class="panel-body"><ul>';
+                                $.each(response.errors, function(i, error) {
+                                    html += '<li>' + error + '</li>';
+                                });
+                                html += '</ul></div></div>';
+                            }
                             $('#glg-generate-messages').html(html);
                         } else {
                             $('#glg-generate-messages').html('<div class="alert alert-danger"><strong>Fehler:</strong> ' + response.error + '</div>');
@@ -592,80 +599,127 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
             $results = [];
             $totalEntriesProcessed = 0;
+            $errors = [];
 
             // Übersetze in jede Zielsprache
             foreach ($targetLanguages as $targetLanguage) {
                 error_log('GLG: Translating to ' . $targetLanguage);
                 $filesWritten = 0;
                 $totalEntries = 0;
+                $fileErrors = 0;
 
                 // Verarbeite jede Source-Datei einzeln
                 foreach ($sourceFiles as $sourceFile => $sourceData) {
-                    error_log('GLG: Processing file: ' . $sourceFile);
+                    try {
+                        error_log('GLG: Processing file: ' . $sourceFile);
 
-                    // Flatten sections into single array for translation
-                    $flatEntries = [];
-                    foreach ($sourceData['sections'] as $sectionName => $entries) {
-                        foreach ($entries as $key => $value) {
-                            $flatKey = $sectionName . '::' . $key;
-                            $flatEntries[$flatKey] = $value;
+                        // Flatten sections into single array for translation
+                        $flatEntries = [];
+                        foreach ($sourceData['sections'] as $sectionName => $entries) {
+                            foreach ($entries as $key => $value) {
+                                $flatKey = $sectionName . '::' . $key;
+                                $flatEntries[$flatKey] = $value;
+                            }
                         }
-                    }
 
-                    // Translate in batches
-                    $batchSize = 50;
-                    $chunks = array_chunk($flatEntries, $batchSize, true);
-                    $translatedFlat = [];
-
-                    foreach ($chunks as $index => $chunk) {
-                        error_log('GLG: Translating batch ' . ($index + 1) . '/' . count($chunks) . ' of ' . $sourceFile);
-                        $translated = $translator->translateBatch($chunk, $sourceLanguage, $targetLanguage, 'E-Commerce: ' . $sourceFile);
-                        $translatedFlat = array_merge($translatedFlat, $translated);
-                    }
-
-                    // Reconstruct section structure
-                    $translatedSections = [];
-                    foreach ($translatedFlat as $flatKey => $translatedValue) {
-                        list($sectionName, $key) = explode('::', $flatKey, 2);
-                        if (!isset($translatedSections[$sectionName])) {
-                            $translatedSections[$sectionName] = [];
+                        if (empty($flatEntries)) {
+                            error_log('GLG: Skipping empty file: ' . $sourceFile);
+                            continue;
                         }
-                        $translatedSections[$sectionName][$key] = $translatedValue;
-                    }
 
-                    // Write file
-                    $writeData = [
-                        'source' => $sourceFile,
-                        'sections' => $translatedSections
-                    ];
+                        // Translate in batches
+                        $batchSize = 50;
+                        $chunks = array_chunk($flatEntries, $batchSize, true);
+                        $translatedFlat = [];
 
-                    $writeResult = $writer->writeSourceFile($writeData, $targetLanguage);
-                    if ($writeResult['success']) {
-                        $filesWritten++;
-                        error_log('GLG: Written: ' . $writeResult['file']);
+                        foreach ($chunks as $index => $chunk) {
+                            try {
+                                error_log('GLG: Translating batch ' . ($index + 1) . '/' . count($chunks) . ' of ' . $sourceFile);
+                                $translated = $translator->translateBatch($chunk, $sourceLanguage, $targetLanguage, 'E-Commerce: ' . $sourceFile);
+                                $translatedFlat = array_merge($translatedFlat, $translated);
+                            } catch (Exception $e) {
+                                error_log('GLG: Error translating batch ' . ($index + 1) . ' of ' . $sourceFile . ': ' . $e->getMessage());
+                                $errors[] = 'Batch error in ' . $sourceFile . ': ' . $e->getMessage();
+                                // Continue with next batch
+                            }
+                        }
+
+                        if (empty($translatedFlat)) {
+                            error_log('GLG: No translations received for: ' . $sourceFile);
+                            continue;
+                        }
+
+                        // Reconstruct section structure
+                        $translatedSections = [];
+                        foreach ($translatedFlat as $flatKey => $translatedValue) {
+                            $parts = explode('::', $flatKey, 2);
+                            if (count($parts) === 2) {
+                                list($sectionName, $key) = $parts;
+                                if (!isset($translatedSections[$sectionName])) {
+                                    $translatedSections[$sectionName] = [];
+                                }
+                                $translatedSections[$sectionName][$key] = $translatedValue;
+                            }
+                        }
+
+                        // Write file
+                        $writeData = [
+                            'source' => $sourceFile,
+                            'sections' => $translatedSections
+                        ];
+
+                        $writeResult = $writer->writeSourceFile($writeData, $targetLanguage);
+                        if ($writeResult['success']) {
+                            $filesWritten++;
+                            error_log('GLG: Written: ' . $writeResult['file']);
+                        } else {
+                            error_log('GLG: Failed to write: ' . $sourceFile);
+                            $errors[] = 'Failed to write: ' . $sourceFile;
+                        }
+                        $totalEntries += count($translatedFlat);
+
+                    } catch (Exception $e) {
+                        error_log('GLG: Error processing file ' . $sourceFile . ': ' . $e->getMessage());
+                        $errors[] = 'File error: ' . $sourceFile . ' - ' . $e->getMessage();
+                        $fileErrors++;
+                        // Continue with next file
                     }
-                    $totalEntries += count($translatedFlat);
                 }
 
                 $results[] = [
                     'language' => $targetLanguage,
                     'files' => $filesWritten,
-                    'entries' => $totalEntries
+                    'entries' => $totalEntries,
+                    'errors' => $fileErrors
                 ];
 
-                error_log('GLG: Completed ' . $targetLanguage . ': ' . $filesWritten . ' files, ' . $totalEntries . ' entries');
+                error_log('GLG: Completed ' . $targetLanguage . ': ' . $filesWritten . ' files, ' . $totalEntries . ' entries, ' . $fileErrors . ' errors');
             }
 
-            // Log Erfolg
+            // Log Erfolg oder teilweiser Erfolg
             $totalProcessed = array_sum(array_column($results, 'entries'));
-            $this->_logAction('generate', $sourceLanguage, implode(',', $targetLanguages), 'success', $totalProcessed . ' Einträge in ' . count($sourceFiles) . ' Dateien übersetzt');
+            $totalErrors = count($errors);
 
-            error_log('GLG: Generation completed successfully');
-            $this->_jsonResponse([
-                'success' => true,
-                'message' => 'Übersetzung erfolgreich abgeschlossen',
-                'results' => $results
-            ]);
+            if ($totalErrors > 0) {
+                $this->_logAction('generate', $sourceLanguage, implode(',', $targetLanguages), 'success',
+                    $totalProcessed . ' Einträge übersetzt, ' . $totalErrors . ' Fehler');
+                error_log('GLG: Generation completed with ' . $totalErrors . ' errors');
+                $this->_jsonResponse([
+                    'success' => true,
+                    'message' => 'Übersetzung abgeschlossen mit ' . $totalErrors . ' Fehlern',
+                    'results' => $results,
+                    'errors' => array_slice($errors, 0, 10) // Nur erste 10 Fehler anzeigen
+                ]);
+            } else {
+                $this->_logAction('generate', $sourceLanguage, implode(',', $targetLanguages), 'success',
+                    $totalProcessed . ' Einträge in ' . count($sourceFiles) . ' Dateien übersetzt');
+                error_log('GLG: Generation completed successfully');
+                $this->_jsonResponse([
+                    'success' => true,
+                    'message' => 'Übersetzung erfolgreich abgeschlossen',
+                    'results' => $results
+                ]);
+            }
 
         } catch (Exception $e) {
             error_log('GLG Generate Error: ' . $e->getMessage());
@@ -683,21 +737,40 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
         error_log('GLG: Source: ' . $sourceLanguage . ', Target: ' . $targetLanguage);
 
+        // Check if this is an AJAX request
+        $isAjax = !empty($_SERVER['HTTP_X_REQUESTED_WITH']) &&
+                  strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+
         // Validierung
         if (empty($sourceLanguage)) {
-            $this->_jsonResponse(['success' => false, 'error' => 'Keine Quellsprache ausgewählt']);
-            return;
+            if ($isAjax) {
+                $this->_jsonResponse(['success' => false, 'error' => 'Keine Quellsprache ausgewählt']);
+                return;
+            } else {
+                header('Location: admin.php?do=GambioLanguageGeneratorModuleCenterModule&error=1');
+                exit;
+            }
         }
 
         if (empty($targetLanguage)) {
-            $this->_jsonResponse(['success' => false, 'error' => 'Keine Zielsprache ausgewählt']);
-            return;
+            if ($isAjax) {
+                $this->_jsonResponse(['success' => false, 'error' => 'Keine Zielsprache ausgewählt']);
+                return;
+            } else {
+                header('Location: admin.php?do=GambioLanguageGeneratorModuleCenterModule&error=1');
+                exit;
+            }
         }
 
         // Prüfe ob Quellsprache == Zielsprache
         if ($sourceLanguage === $targetLanguage) {
-            $this->_jsonResponse(['success' => false, 'error' => 'Quell- und Zielsprache dürfen nicht identisch sein']);
-            return;
+            if ($isAjax) {
+                $this->_jsonResponse(['success' => false, 'error' => 'Quell- und Zielsprache dürfen nicht identisch sein']);
+                return;
+            } else {
+                header('Location: admin.php?do=GambioLanguageGeneratorModuleCenterModule&error=1');
+                exit;
+            }
         }
 
         try {
@@ -725,6 +798,7 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
                 return $item['file'] . ' > ' . $item['section'] . ' > ' . $item['key'];
             }, $comparison['missing_keys']);
 
+            // Always return JSON (the form uses AJAX)
             $this->_jsonResponse([
                 'success' => true,
                 'sourceCount' => $sourceCount,
@@ -736,7 +810,12 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
         } catch (Exception $e) {
             error_log('GLG Compare Error: ' . $e->getMessage());
-            $this->_jsonResponse(['success' => false, 'error' => $e->getMessage()]);
+            if ($isAjax) {
+                $this->_jsonResponse(['success' => false, 'error' => $e->getMessage()]);
+            } else {
+                header('Location: admin.php?do=GambioLanguageGeneratorModuleCenterModule&error=1');
+                exit;
+            }
         }
     }
 
