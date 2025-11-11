@@ -36,19 +36,7 @@ class GLGFileWriter {
         // Bestimme Dateipfad
         $targetFile = $this->getTargetFilePath($source, $targetLanguage);
 
-        // Erstelle Backup wenn aktiviert
-        if ($this->backupEnabled && file_exists($targetFile)) {
-            $this->createBackup($targetFile);
-        }
-
-        // Erstelle Verzeichnis wenn nicht vorhanden (rekursiv mit allen Parent-Verzeichnissen)
-        $targetDir = dirname($targetFile);
-        if (!is_dir($targetDir)) {
-            error_log('GLGFileWriter: Creating directory: ' . $targetDir);
-            $this->createDirectoryRecursive($targetDir);
-        }
-
-        // Erstelle auch das Hauptsprachverzeichnis falls nicht vorhanden
+        // WICHTIG: Erstelle ZUERST das Hauptsprachverzeichnis
         $mainLangDir = DIR_FS_CATALOG . 'lang/' . $targetLanguage;
         if (!is_dir($mainLangDir)) {
             error_log('GLGFileWriter: Creating main language directory: ' . $mainLangDir);
@@ -56,6 +44,18 @@ class GLGFileWriter {
 
             // Kopiere wichtige Standard-Dateien aus german
             $this->copyLanguageDefaults($targetLanguage);
+        }
+
+        // Erstelle Backup wenn aktiviert
+        if ($this->backupEnabled && file_exists($targetFile)) {
+            $this->createBackup($targetFile);
+        }
+
+        // Erstelle Ziel-Verzeichnis wenn nicht vorhanden (rekursiv mit allen Parent-Verzeichnissen)
+        $targetDir = dirname($targetFile);
+        if (!is_dir($targetDir)) {
+            error_log('GLGFileWriter: Creating directory: ' . $targetDir);
+            $this->createDirectoryRecursive($targetDir);
         }
 
         // Prüfe ob es eine GXModule-Datei ist
@@ -441,9 +441,20 @@ class GLGFileWriter {
             $this->createDirectoryRecursive($parent);
         }
 
+        // Prüfe nochmal nach rekursivem Aufruf (Race-Condition möglich)
+        if (is_dir($dir)) {
+            return true;
+        }
+
         // Erstelle aktuelles Verzeichnis
         if (!mkdir($dir, 0775)) {
-            throw new Exception('Konnte Verzeichnis nicht erstellen: ' . $dir);
+            // Prüfe ein letztes Mal ob es doch existiert (Race-Condition)
+            if (!is_dir($dir)) {
+                $lastError = error_get_last();
+                $errorMsg = $lastError ? $lastError['message'] : 'Unbekannter Fehler';
+                throw new Exception('Konnte Verzeichnis nicht erstellen: ' . $dir . ' (Fehler: ' . $errorMsg . ')');
+            }
+            return true;
         }
 
         // Setze Gruppe auf www-data für korrekten Schreibzugriff
