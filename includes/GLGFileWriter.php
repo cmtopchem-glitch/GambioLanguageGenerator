@@ -432,6 +432,13 @@ class GLGFileWriter {
     private function createDirectoryRecursive($dir) {
         // Prüfe ob Verzeichnis bereits existiert
         if (is_dir($dir)) {
+            // Verzeichnis existiert - prüfe und korrigiere Berechtigungen falls nötig
+            $currentPerms = fileperms($dir) & 0777;
+            if ($currentPerms !== 0775) {
+                error_log("GLGFileWriter: Korrigiere Berechtigungen für $dir von " . decoct($currentPerms) . " auf 0775");
+                @chmod($dir, 0775);
+                @chgrp($dir, 'www-data');
+            }
             return true;
         }
 
@@ -446,15 +453,26 @@ class GLGFileWriter {
             return true;
         }
 
-        // Erstelle aktuelles Verzeichnis
-        if (!mkdir($dir, 0775)) {
+        // Erstelle aktuelles Verzeichnis mit Error-Suppression und prüfe Ergebnis
+        $created = @mkdir($dir, 0775);
+
+        if (!$created) {
             // Prüfe ein letztes Mal ob es doch existiert (Race-Condition)
-            if (!is_dir($dir)) {
-                $lastError = error_get_last();
-                $errorMsg = $lastError ? $lastError['message'] : 'Unbekannter Fehler';
-                throw new Exception('Konnte Verzeichnis nicht erstellen: ' . $dir . ' (Fehler: ' . $errorMsg . ')');
+            if (is_dir($dir)) {
+                return true;
             }
-            return true;
+
+            // Sammle Debug-Infos
+            $parentExists = is_dir($parent) ? 'ja' : 'nein';
+            $parentWritable = is_writable($parent) ? 'ja' : 'nein';
+            $parentPerms = $parentExists === 'ja' ? substr(sprintf('%o', fileperms($parent)), -4) : 'n/a';
+
+            throw new Exception(
+                "Konnte Verzeichnis nicht erstellen: $dir\n" .
+                "Parent existiert: $parentExists\n" .
+                "Parent beschreibbar: $parentWritable\n" .
+                "Parent Berechtigungen: $parentPerms"
+            );
         }
 
         // Setze Gruppe auf www-data für korrekten Schreibzugriff
