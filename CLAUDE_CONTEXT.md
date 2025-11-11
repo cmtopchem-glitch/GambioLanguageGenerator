@@ -1,46 +1,40 @@
 # Claude Code - Aktueller Arbeitsstand
 
-**Datum:** 2025-11-11 20:56 Uhr
-**Letzter Commit:** Refactor to Smarty template like AIProductOptimizer
+**Datum:** 2025-11-11 23:30 Uhr
+**Letzter Commit:** 565d290 - FIX CRITICAL: Directory permissions 0775
 **GitHub:** https://github.com/cmtopchem-glitch/GambioLanguageGenerator
 
 ---
 
-## Aktueller Status
+## ✅ Aktueller Status - BETA FUNKTIONSFÄHIG
 
-### Was funktioniert ✅
-- Modul ist im Gambio Admin erreichbar unter: admin.php?do=ModuleCenter&module=GambioLanguageGenerator
-- Controller verwendet Smarty-Template (wie AIProductOptimizer)
-- Template mit Bootstrap-Tabs funktioniert
-- Cache-Management funktioniert (php clearcache.php im Hauptverzeichnis)
-- Alle Modul-Dateien bleiben im Modulordner (nichts ausserhalb)
-- AdminPageHttpControllerResponse ist die korrekte Lösung!
-
-### Lösung gefunden! 🎉
-**Das Modul verwendet jetzt das AIProductOptimizer-Muster:**
-
-1. **Controller** (`actionDefault()` in Zeile 9-86):
-   - Lädt Smarty direkt im Controller
-   - Setzt Template-Verzeichnis auf Modul-eigenes Verzeichnis
-   - Verwendet `$smarty->fetch('module_content.html')`
-   - Returned `AdminPageHttpControllerResponse` mit dem gerenderten HTML
-
-2. **Template** (`Admin/Templates/module_content.html`):
-   - Vollständiges Smarty-Template mit eigenen Styles
-   - Bootstrap-Tabs für: Generieren, Vergleichen, Einstellungen
-   - Inline JavaScript für Tab-Funktionalität und AJAX-Calls
-   - Smarty-Variablen für alle Daten
+### Was funktioniert
+- ✅ ModuleCenter Integration mit Smarty-Templates
+- ✅ Live Progress Tracking (Session-basiert, AJAX Polling)
+- ✅ Stop-Button zum Abbrechen von Übersetzungen
+- ✅ Automatische Verzeichnis-Erstellung mit korrekten Berechtigungen
+- ✅ Korrekte Pfad-Generierung (`/srv/www/test.redozone/lang/danish/...`)
+- ✅ 23+ Sprachen unterstützt
+- ✅ Bootstrap-Tabs funktionieren
+- ✅ Detailliertes Logging
 
 ### Wichtige Dateien
-- **Controller:** `Admin/Classes/Controllers/GambioLanguageGeneratorModuleCenterModuleController.inc.php`
-- **Template:** `Admin/Templates/module_content.html` (Smarty mit Tabs)
-- **Includes:** `includes/` (GLGCore, GLGReader, GLGTranslator, GLGCompare, GLGFileWriter)
+- **Controller:** `Admin/Classes/Controllers/GambioLanguageGeneratorModuleCenterModuleController.inc.php` (420 Zeilen)
+- **Template:** `Admin/Templates/module_content.html` (Smarty mit Tabs, Progress, Stop-Button)
+- **Includes:**
+  - `GLGReader.php` - Liest Sprachdaten aus DB
+  - `GLGTranslator.php` - OpenAI/DeepL Integration
+  - `GLGFileWriter.php` - Schreibt Dateien mit korrekten Permissions
+  - `GLGCompare.php` - Sprachvergleich
+  - `GLGCore.php` - Core-Funktionalität
 
-### Was gelernt wurde
-1. **AdminPageHttpControllerResponse IST die richtige Lösung** - auch AIProductOptimizer verwendet sie!
-2. Der Unterschied war nicht die Response-Klasse, sondern die Template-Struktur
-3. Templates müssen mit Smarty gerendert werden, nicht mit PHP ob_start/ob_get_clean
-4. Inline-Styles im Template sind erlaubt und sogar empfohlen für ModuleCenter-Module
+### Kritische Fixes (Heute)
+1. **ModuleCenter Integration** - AdminPageHttpControllerResponse + Smarty
+2. **Tab-Switching** - Eigene glgSwitchTab() Funktion (kein Bootstrap-JS)
+3. **Pfad-Generierung** - Automatisches `lang/` Präfix
+4. **Berechtigungen** - 0775 statt 0755 für www-data Schreibzugriff
+5. **foreach Loop** - Korrekte Array-Struktur für sourceFiles
+6. **Live Progress** - Session-basiert mit AJAX Polling alle 500ms
 
 ### Wichtige Befehle
 Cache loeschen: cd /srv/www/test.redozone && php clearcache.php
