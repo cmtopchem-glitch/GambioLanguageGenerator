@@ -18,8 +18,7 @@ class GLGFileWriter {
         $this->backupPath = DIR_FS_CATALOG . 'backup/language_generator/';
 
         if ($this->backupEnabled && !is_dir($this->backupPath)) {
-            mkdir($this->backupPath, 0775, true);
-            @chgrp($this->backupPath, 'www-data');
+            $this->createDirectoryRecursive($this->backupPath);
         }
     }
     
@@ -46,22 +45,14 @@ class GLGFileWriter {
         $targetDir = dirname($targetFile);
         if (!is_dir($targetDir)) {
             error_log('GLGFileWriter: Creating directory: ' . $targetDir);
-            if (!mkdir($targetDir, 0775, true)) {
-                throw new Exception('Konnte Verzeichnis nicht erstellen: ' . $targetDir);
-            }
-            // Setze Gruppe auf www-data
-            @chgrp($targetDir, 'www-data');
+            $this->createDirectoryRecursive($targetDir);
         }
 
         // Erstelle auch das Hauptsprachverzeichnis falls nicht vorhanden
         $mainLangDir = DIR_FS_CATALOG . 'lang/' . $targetLanguage;
         if (!is_dir($mainLangDir)) {
             error_log('GLGFileWriter: Creating main language directory: ' . $mainLangDir);
-            if (!mkdir($mainLangDir, 0775, true)) {
-                throw new Exception('Konnte Hauptsprachverzeichnis nicht erstellen: ' . $mainLangDir);
-            }
-            // Setze Gruppe auf www-data
-            @chgrp($mainLangDir, 'www-data');
+            $this->createDirectoryRecursive($mainLangDir);
 
             // Kopiere wichtige Standard-Dateien aus german
             $this->copyLanguageDefaults($targetLanguage);
@@ -261,8 +252,7 @@ class GLGFileWriter {
 
         $backupDir = dirname($backupFile);
         if (!is_dir($backupDir)) {
-            mkdir($backupDir, 0775, true);
-            @chgrp($backupDir, 'www-data');
+            $this->createDirectoryRecursive($backupDir);
         }
 
         return copy($sourceFile, $backupFile);
@@ -405,8 +395,7 @@ class GLGFileWriter {
             $targetSubDir = $targetDir . '/' . $subDir;
             if (!is_dir($targetSubDir)) {
                 error_log('GLGFileWriter: Creating subdirectory: ' . $subDir);
-                mkdir($targetSubDir, 0775, true);
-                @chgrp($targetSubDir, 'www-data');
+                $this->createDirectoryRecursive($targetSubDir);
 
                 // Kopiere index.html in Unterverzeichnis
                 $indexSource = $sourceDir . '/' . $subDir . '/index.html';
@@ -432,5 +421,36 @@ class GLGFileWriter {
             copy($sourceIcon, $targetIcon);
             chmod($targetIcon, 0644);
         }
+    }
+
+    /**
+     * Erstellt Verzeichnis rekursiv und setzt korrekte Berechtigungen für alle Parent-Verzeichnisse
+     *
+     * @param string $dir Verzeichnispfad
+     * @throws Exception wenn Verzeichnis nicht erstellt werden kann
+     */
+    private function createDirectoryRecursive($dir) {
+        // Prüfe ob Verzeichnis bereits existiert
+        if (is_dir($dir)) {
+            return true;
+        }
+
+        // Erstelle alle Parent-Verzeichnisse rekursiv
+        $parent = dirname($dir);
+        if (!is_dir($parent)) {
+            $this->createDirectoryRecursive($parent);
+        }
+
+        // Erstelle aktuelles Verzeichnis
+        if (!mkdir($dir, 0775)) {
+            throw new Exception('Konnte Verzeichnis nicht erstellen: ' . $dir);
+        }
+
+        // Setze Gruppe auf www-data für korrekten Schreibzugriff
+        @chgrp($dir, 'www-data');
+
+        error_log("GLGFileWriter: Created directory with 0775 permissions: $dir");
+
+        return true;
     }
 }

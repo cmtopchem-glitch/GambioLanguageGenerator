@@ -50,7 +50,7 @@ class GLGReader {
      */
     private function readCoreFiles($language) {
         $language = xtc_db_input($language);
-        
+
         $query = "SELECT
                     source,
                     section_name,
@@ -63,8 +63,8 @@ class GLGReader {
                   )
                   AND source NOT LIKE 'GXModules/%'
                   ORDER BY source, section_name, phrase_name";
-        
-        return $this->executeAndGroup($query);
+
+        return $this->executeAndGroup($query, $language);
     }
     
     /**
@@ -72,20 +72,20 @@ class GLGReader {
      */
     private function readGXModules($language, $selectedModules = []) {
         $language = xtc_db_input($language);
-        
+
         $moduleFilter = '';
         if (!empty($selectedModules)) {
             $modules = array_map('xtc_db_input', $selectedModules);
             $modulesStr = "'" . implode("','", $modules) . "'";
-            
+
             // Erstelle LIKE Filter für jedes Modul
             $likeConditions = array_map(function($module) {
                 return "source LIKE 'GXModules/$module/%'";
             }, $modules);
-            
+
             $moduleFilter = ' AND (' . implode(' OR ', $likeConditions) . ')';
         }
-        
+
         $query = "SELECT
                     source,
                     section_name,
@@ -99,21 +99,46 @@ class GLGReader {
                   AND source LIKE 'GXModules/%'
                   $moduleFilter
                   ORDER BY source, section_name, phrase_name";
-        
-        return $this->executeAndGroup($query);
+
+        return $this->executeAndGroup($query, $language);
     }
     
     /**
      * Führt Query aus und gruppiert Ergebnisse
+     *
+     * @param string $query SQL Query
+     * @param string $language Sprachverzeichnis für Pfad-Normalisierung
+     * @return array Gruppierte Daten
      */
-    private function executeAndGroup($query) {
+    private function executeAndGroup($query, $language = null) {
         $result = xtc_db_query($query);
         $data = [];
-        
+
+        // Hole alle verfügbaren Sprachen für Pfad-Normalisierung
+        $allLanguages = [];
+        if ($language) {
+            $allLanguages = $this->getAvailableLanguages();
+        }
+
         while ($row = xtc_db_fetch_array($result)) {
             $source = $row['source'];
+
+            // KRITISCH: Normalisiere Source-Pfad
+            // Datenbank kann "english/original_sections/..." enthalten, auch für deutsche Einträge!
+            // Ersetze falsche Sprache am Anfang mit der tatsächlichen Quellsprache
+            if ($language && !empty($allLanguages)) {
+                foreach ($allLanguages as $lang) {
+                    if (strpos($source, $lang . '/') === 0) {
+                        // Pfad beginnt mit einer Sprache - ersetze mit der aktuellen Quellsprache
+                        $source = $language . '/' . substr($source, strlen($lang) + 1);
+                        error_log("GLGReader: Normalized source path from '$row[source]' to '$source'");
+                        break;
+                    }
+                }
+            }
+
             $section = $row['section_name'];
-            
+
             if (!isset($data[$source])) {
                 $data[$source] = [
                     'source' => $source,
@@ -121,25 +146,40 @@ class GLGReader {
                     'latest_modification' => $row['date_modified']
                 ];
             }
-            
+
             if (!isset($data[$source]['sections'][$section])) {
                 $data[$source]['sections'][$section] = [];
             }
-            
+
             $data[$source]['sections'][$section][$row['phrase_name']] = $row['phrase_text'];
-            
+
             // Aktualisiere latest_modification wenn neuer
             if (strtotime($row['date_modified']) > strtotime($data[$source]['latest_modification'])) {
                 $data[$source]['latest_modification'] = $row['date_modified'];
             }
         }
-        
+
         return $data;
+    }
+
+    /**
+     * Gibt verfügbare Sprachen zurück
+     */
+    private function getAvailableLanguages() {
+        $query = "SELECT directory FROM languages";
+        $result = xtc_db_query($query);
+
+        $languages = [];
+        while ($row = xtc_db_fetch_array($result)) {
+            $languages[] = $row['directory'];
+        }
+
+        return $languages;
     }
     
     /**
      * Liest geänderte Einträge seit einem Datum
-     * 
+     *
      * @param string $since Datum im Format 'Y-m-d H:i:s'
      * @param string $language Sprachverzeichnis
      * @return array Geänderte Einträge
@@ -147,7 +187,7 @@ class GLGReader {
     public function readChangedEntries($since, $language) {
         $since = xtc_db_input($since);
         $language = xtc_db_input($language);
-        
+
         $query = "SELECT
                     source,
                     section_name,
@@ -160,8 +200,8 @@ class GLGReader {
                   )
                   AND date_modified > '$since'
                   ORDER BY source, section_name, phrase_name";
-        
-        return $this->executeAndGroup($query);
+
+        return $this->executeAndGroup($query, $language);
     }
     
     /**
