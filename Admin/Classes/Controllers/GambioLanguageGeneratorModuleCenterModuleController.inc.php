@@ -82,9 +82,9 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
         error_log('GLG: _renderInterface() returned, HTML length: ' . strlen($html));
 
-        // Return proper response object - wie beim AI Product Optimizer
-        error_log('GLG: Creating AdminPageHttpControllerResponse');
-        return new AdminPageHttpControllerResponse($this->pageTitle, $html);
+        // Ausgabe direkt - ModuleCenterModule erwartet HTML-Output
+        error_log('GLG: Outputting HTML directly');
+        echo $html;
     }
 
     private function _renderInterface($languages, $apiProvider, $apiKey, $model, $success, $error)
