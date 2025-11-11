@@ -334,6 +334,61 @@ jQuery(document).ready(function($) {
     $('#glg-compare-source-language').on('change', updateCompareTargetLanguage);
     updateCompareTargetLanguage();
 
+    // Progress Polling Variables
+    var progressInterval = null;
+
+    function startProgressPolling() {
+        // Poll every 500ms
+        progressInterval = setInterval(function() {
+            $.ajax({
+                url: 'admin.php?do=GambioLanguageGeneratorModuleCenterModule&action=getProgress',
+                type: 'GET',
+                dataType: 'json',
+                success: function(progress) {
+                    updateProgressDisplay(progress);
+
+                    // Stop polling wenn fertig oder Fehler
+                    if (progress.status === 'completed' || progress.status === 'error') {
+                        stopProgressPolling();
+                    }
+                },
+                error: function() {
+                    console.log('Error polling progress');
+                }
+            });
+        }, 500);
+    }
+
+    function stopProgressPolling() {
+        if (progressInterval) {
+            clearInterval(progressInterval);
+            progressInterval = null;
+        }
+    }
+
+    function updateProgressDisplay(progress) {
+        var html = '<div class="alert alert-info">';
+        html += '<i class="fa fa-spinner fa-spin"></i> ';
+        html += '<strong>' + progress.message + '</strong><br>';
+
+        if (progress.total_files > 0) {
+            var filePercent = Math.round((progress.files_processed / progress.total_files) * 100);
+            html += '<div style="margin-top: 10px;">';
+            html += '<strong>Sprache:</strong> ' + progress.current_language + ' ';
+            html += '(' + (progress.languages_completed + 1) + '/' + progress.total_languages + ')<br>';
+            html += '<strong>Datei:</strong> ' + progress.current_file + '<br>';
+            html += '<strong>Fortschritt:</strong> ' + progress.files_processed + '/' + progress.total_files + ' Dateien (' + filePercent + '%)<br>';
+            html += '<div class="progress" style="margin-top: 10px; height: 25px;">';
+            html += '<div class="progress-bar progress-bar-striped active" style="width: ' + filePercent + '%; line-height: 25px;">';
+            html += filePercent + '%';
+            html += '</div></div>';
+            html += '</div>';
+        }
+
+        html += '</div>';
+        $('#glg-generate-messages').html(html);
+    }
+
     // Generate Form Handler
     $('#glgGenerateForm').on('submit', function(e) {
         e.preventDefault();
@@ -354,7 +409,10 @@ jQuery(document).ready(function($) {
             return;
         }
 
-        $('#glg-generate-messages').html('<div class="alert alert-info"><i class="fa fa-spinner fa-spin"></i> Übersetzung läuft... Dies kann einige Minuten dauern.</div>');
+        $('#glg-generate-messages').html('<div class="alert alert-info"><i class="fa fa-spinner fa-spin"></i> Starte Übersetzung...</div>');
+
+        // Start progress polling
+        startProgressPolling();
 
         $.ajax({
             url: 'admin.php?do=GambioLanguageGeneratorModuleCenterModule&action=generate',
@@ -365,6 +423,8 @@ jQuery(document).ready(function($) {
                 targetLanguages: targetLanguages
             },
             success: function(response) {
+                stopProgressPolling();
+
                 if (response.success) {
                     var alertClass = response.errors && response.errors.length > 0 ? 'alert-warning' : 'alert-success';
                     var html = '<div class="alert ' + alertClass + '"><strong>' + (response.errors ? 'Teilweise erfolgreich!' : 'Erfolg!') + '</strong> ' + response.message + '</div>';
@@ -386,6 +446,7 @@ jQuery(document).ready(function($) {
                 }
             },
             error: function(xhr, status, error) {
+                stopProgressPolling();
                 $('#glg-generate-messages').html('<div class="alert alert-danger"><strong>Fehler:</strong> ' + error + '</div>');
             }
         });

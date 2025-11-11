@@ -150,6 +150,18 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
     {
         error_log('GLG: actionGenerate() called');
 
+        // Initialisiere Session-Status
+        $_SESSION['glg_progress'] = [
+            'status' => 'starting',
+            'current_file' => '',
+            'current_language' => '',
+            'files_processed' => 0,
+            'total_files' => 0,
+            'languages_completed' => 0,
+            'total_languages' => 0,
+            'message' => 'Starte Übersetzung...'
+        ];
+
         $sourceLanguage = $this->_getPostData('sourceLanguage');
         $targetLanguages = $this->_getPostData('targetLanguages');
 
@@ -196,29 +208,46 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
             // Lese Quellsprache (gruppiert nach Dateien)
             error_log('GLG: Reading source language data...');
+            $_SESSION['glg_progress']['message'] = 'Lese Quelldateien...';
+            $_SESSION['glg_progress']['status'] = 'reading';
+
             $sourceFiles = $reader->readLanguageData($sourceLanguage);
 
             if (empty($sourceFiles)) {
+                $_SESSION['glg_progress']['status'] = 'error';
+                $_SESSION['glg_progress']['message'] = 'Keine Sprachdateien gefunden';
                 $this->_jsonResponse(['success' => false, 'error' => 'Keine Sprachdateien in Quellsprache gefunden']);
                 return;
             }
 
             error_log('GLG: Found ' . count($sourceFiles) . ' source files');
 
+            $_SESSION['glg_progress']['total_files'] = count($sourceFiles);
+            $_SESSION['glg_progress']['total_languages'] = count($targetLanguages);
+            $_SESSION['glg_progress']['status'] = 'translating';
+
             $results = [];
             $totalEntriesProcessed = 0;
             $errors = [];
 
             // Übersetze in jede Zielsprache
-            foreach ($targetLanguages as $targetLanguage) {
+            foreach ($targetLanguages as $langIndex => $targetLanguage) {
+                $_SESSION['glg_progress']['current_language'] = $targetLanguage;
+                $_SESSION['glg_progress']['languages_completed'] = $langIndex;
+                $_SESSION['glg_progress']['files_processed'] = 0;
                 error_log('GLG: Translating to ' . $targetLanguage);
                 $filesWritten = 0;
                 $totalEntries = 0;
                 $fileErrors = 0;
 
                 // Verarbeite jede Source-Datei einzeln
-                foreach ($sourceFiles as $sourceFile => $sourceData) {
+                foreach ($sourceFiles as $fileIndex => $sourceData) {
+                    $sourceFile = $sourceData['source'];
                     try {
+                        $_SESSION['glg_progress']['files_processed'] = $fileIndex + 1;
+                        $_SESSION['glg_progress']['current_file'] = $sourceFile;
+                        $_SESSION['glg_progress']['message'] = "Übersetze $sourceFile nach $targetLanguage...";
+
                         error_log('GLG: Processing file: ' . $sourceFile);
 
                         // Flatten sections into single array for translation
@@ -308,6 +337,11 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
             $totalProcessed = array_sum(array_column($results, 'entries'));
             $totalErrors = count($errors);
 
+            $_SESSION['glg_progress']['status'] = 'completed';
+            $_SESSION['glg_progress']['message'] = 'Übersetzung abgeschlossen!';
+            $_SESSION['glg_progress']['files_processed'] = $_SESSION['glg_progress']['total_files'];
+            $_SESSION['glg_progress']['languages_completed'] = $_SESSION['glg_progress']['total_languages'];
+
             if ($totalErrors > 0) {
                 $this->_logAction('generate', $sourceLanguage, implode(',', $targetLanguages), 'success',
                     $totalProcessed . ' Einträge übersetzt, ' . $totalErrors . ' Fehler');
@@ -331,9 +365,28 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
         } catch (Exception $e) {
             error_log('GLG Generate Error: ' . $e->getMessage());
+            $_SESSION['glg_progress']['status'] = 'error';
+            $_SESSION['glg_progress']['message'] = 'Fehler: ' . $e->getMessage();
             $this->_logAction('generate', $sourceLanguage, implode(',', $targetLanguages), 'error', $e->getMessage());
             $this->_jsonResponse(['success' => false, 'error' => $e->getMessage()]);
         }
+    }
+
+    public function actionGetProgress()
+    {
+        // Gibt den aktuellen Fortschritt zurück (für AJAX Polling)
+        $progress = $_SESSION['glg_progress'] ?? [
+            'status' => 'idle',
+            'message' => 'Keine laufende Übersetzung',
+            'files_processed' => 0,
+            'total_files' => 0,
+            'languages_completed' => 0,
+            'total_languages' => 0,
+            'current_file' => '',
+            'current_language' => ''
+        ];
+
+        $this->_jsonResponse($progress);
     }
 
     public function actionCompare()
