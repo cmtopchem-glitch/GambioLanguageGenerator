@@ -1,7 +1,7 @@
 # Claude Code - Aktueller Arbeitsstand
 
-**Datum:** 2025-11-11 23:30 Uhr
-**Letzter Commit:** 565d290 - FIX CRITICAL: Directory permissions 0775
+**Datum:** 2025-11-11 22:47 Uhr
+**Letzter Commit:** 81ea899 - FIX CRITICAL: Source path normalization & directory permissions
 **GitHub:** https://github.com/cmtopchem-glitch/GambioLanguageGenerator
 
 ---
@@ -35,6 +35,8 @@
 4. **Berechtigungen** - 0775 statt 0755 für www-data Schreibzugriff
 5. **foreach Loop** - Korrekte Array-Struktur für sourceFiles
 6. **Live Progress** - Session-basiert mit AJAX Polling alle 500ms
+7. **Source Path Normalisierung** - DB-Pfade mit falscher Sprache werden korrigiert
+8. **Rekursive Directory Creation** - Alle Parent-Verzeichnisse erhalten korrekte Permissions
 
 ### Wichtige Befehle
 Cache loeschen: cd /srv/www/test.redozone && php clearcache.php
