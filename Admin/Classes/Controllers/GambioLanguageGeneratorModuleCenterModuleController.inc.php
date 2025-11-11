@@ -82,9 +82,9 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
         error_log('GLG: _renderInterface() returned, HTML length: ' . strlen($html));
 
-        // Ausgabe direkt - ModuleCenterModule erwartet HTML-Output
-        error_log('GLG: Outputting HTML directly');
-        echo $html;
+        // Return HTML string - Framework handles output
+        error_log('GLG: Returning HTML content');
+        return $html;
     }
 
     private function _renderInterface($languages, $apiProvider, $apiKey, $model, $success, $error)
