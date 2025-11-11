@@ -82,11 +82,11 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
         error_log('GLG: _renderInterface() returned, HTML length: ' . strlen($html));
 
-        // Set content for template-based output
-        error_log('GLG: Setting contentView');
-        $this->contentView->set_template_dir(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/Admin/Templates/');
-        $this->contentView->set_content_template('module_content.html');
-        $this->contentView->set_content_data('MODULE_CONTENT', $html);
+        // Output HTML directly and exit - ModuleCenterModule pattern
+        error_log('GLG: Outputting HTML and exiting');
+        header('Content-Type: text/html; charset=UTF-8');
+        echo $html;
+        exit;
     }
 
     private function _renderInterface($languages, $apiProvider, $apiKey, $model, $success, $error)
