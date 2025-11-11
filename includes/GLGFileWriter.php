@@ -179,50 +179,36 @@ class GLGFileWriter {
      */
     private function getTargetFilePath($source, $targetLanguage) {
         // Ersetze die Sprache im Pfad
-        // z.B. "german/buttons.php" -> "lang/danish/buttons.php"
-        // oder "lang/german/buttons.php" -> "lang/danish/buttons.php"
+        // z.B. "lang/german/buttons.php" -> "lang/danish/buttons.php"
         // oder "GXModules/MyModule/lang/german/admin.php" -> "GXModules/MyModule/lang/danish/admin.php"
 
-        error_log("GLGFileWriter: getTargetFilePath - Source: $source, Target Language: $targetLanguage");
-
-        // Prüfe ob es ein GXModule-Pfad ist
-        if (strpos($source, 'GXModules/') === 0) {
-            // GXModule-Pfad: GXModules/MyModule/lang/german/file.php
-            if (preg_match('#GXModules/[^/]+/lang/[^/]+/#', $source)) {
-                $targetPath = preg_replace('#(GXModules/[^/]+/lang/)[^/]+/#', '$1' . $targetLanguage . '/', $source);
-            } else {
-                throw new Exception('Ungültiger GXModule-Pfad: ' . $source);
-            }
+        if (preg_match('#/lang/[^/]+/#', $source)) {
+            // Hat bereits /lang/sprache/ im Pfad
+            $targetPath = preg_replace('#/lang/[^/]+/#', '/lang/' . $targetLanguage . '/', $source);
         } else {
-            // Core-Pfad: Kann sein "german/file.php" ODER "lang/german/file.php"
-            if (strpos($source, 'lang/') === 0) {
-                // Hat bereits 'lang/' am Anfang
-                $targetPath = preg_replace('#^lang/[^/]+/#', 'lang/' . $targetLanguage . '/', $source);
-            } else {
-                // Kein 'lang/' am Anfang - muss hinzugefügt werden
-                // Ersetze Sprachverzeichnis am Anfang: german/file.php -> lang/danish/file.php
-                $languages = $this->getAvailableLanguages();
-                $matched = false;
+            // Fallback: Ersetze ersten Sprachnamen
+            $languages = $this->getAvailableLanguages();
+            $targetPath = null;
 
-                foreach ($languages as $lang) {
-                    if (strpos($source, $lang . '/') === 0) {
-                        // Sprache ist am Anfang
-                        $targetPath = 'lang/' . $targetLanguage . '/' . substr($source, strlen($lang) + 1);
-                        $matched = true;
-                        break;
-                    }
+            foreach ($languages as $lang) {
+                if (strpos($source, $lang) !== false) {
+                    $targetPath = str_replace($lang, $targetLanguage, $source);
+                    break;
                 }
+            }
 
-                if (!$matched) {
-                    throw new Exception('Konnte Sprache im Pfad nicht erkennen: ' . $source);
-                }
+            if (!$targetPath) {
+                throw new Exception('Konnte Zielsprache nicht im Pfad ersetzen: ' . $source);
             }
         }
 
-        $fullPath = DIR_FS_CATALOG . $targetPath;
-        error_log("GLGFileWriter: getTargetFilePath - Result: $fullPath");
+        // Stelle sicher, dass Core-Dateien lang/ am Anfang haben
+        if (strpos($targetPath, 'GXModules/') !== 0 && strpos($targetPath, 'lang/') !== 0) {
+            // Füge lang/ am Anfang hinzu
+            $targetPath = 'lang/' . $targetPath;
+        }
 
-        return $fullPath;
+        return DIR_FS_CATALOG . $targetPath;
     }
     
     /**
