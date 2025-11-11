@@ -82,9 +82,32 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
         error_log('GLG: _renderInterface() returned, HTML length: ' . strlen($html));
 
-        // Output HTML directly for ModuleCenter integration
-        error_log('GLG: Outputting HTML directly');
+        // Try to create a response object
+        // Since we don't know the exact class, try common patterns
+        try {
+            // Try HtmlHttpControllerResponse
+            if (class_exists('HtmlHttpControllerResponse')) {
+                error_log('GLG: Using HtmlHttpControllerResponse');
+                return new HtmlHttpControllerResponse($html);
+            }
+            // Try HttpControllerResponse
+            if (class_exists('HttpControllerResponse')) {
+                error_log('GLG: Using HttpControllerResponse');
+                return new HttpControllerResponse($html);
+            }
+            // Try RedirectHttpControllerResponse as fallback
+            if (class_exists('RedirectHttpControllerResponse')) {
+                error_log('GLG: Using RedirectHttpControllerResponse');
+                // Can't use this for HTML, fall through
+            }
+        } catch (Exception $e) {
+            error_log('GLG: Error creating response object: ' . $e->getMessage());
+        }
+
+        // Fallback: output HTML and exit
+        error_log('GLG: No response class found, using echo and exit');
         echo $html;
+        exit;
     }
 
     private function _renderInterface($languages, $apiProvider, $apiKey, $model, $success, $error)
