@@ -32,7 +32,16 @@ class GLGCompare {
         // Lade beide Sprachen
         $sourceData = $this->reader->readLanguageData($sourceLanguage, $options);
         $targetData = $this->reader->readLanguageData($targetLanguage, $options);
-        
+
+        // Normalisiere Target-Daten: Ersetze Sprache im Source-Pfad
+        // z.B. spanish/original_sections/admin/config.php -> original_sections/admin/config.php (normalisiert)
+        $normalizedTargetData = [];
+        foreach ($targetData as $targetFile => $targetFileData) {
+            // Entferne Sprachprefix vom Pfad
+            $normalizedPath = $this->normalizeSourcePath($targetFile, $targetLanguage);
+            $normalizedTargetData[$normalizedPath] = $targetFileData;
+        }
+
         $comparison = [
             'source_language' => $sourceLanguage,
             'target_language' => $targetLanguage,
@@ -43,16 +52,19 @@ class GLGCompare {
             'missing_keys' => [],
             'statistics' => []
         ];
-        
+
         // Vergleiche Dateien
         foreach ($sourceData as $sourceFile => $sourceFileData) {
             $sourceSections = $sourceFileData['sections'];
-            
+
             // Zähle Einträge
             $sourceCount = $this->countEntries($sourceSections);
             $comparison['total_source_entries'] += $sourceCount;
-            
-            if (!isset($targetData[$sourceFile])) {
+
+            // Normalisiere Source-Pfad für Vergleich
+            $normalizedSourcePath = $this->normalizeSourcePath($sourceFile, $sourceLanguage);
+
+            if (!isset($normalizedTargetData[$normalizedSourcePath])) {
                 // Komplette Datei fehlt
                 $comparison['missing_files'][] = [
                     'file' => $sourceFile,
@@ -61,11 +73,11 @@ class GLGCompare {
                 $comparison['missing_entries'] += $sourceCount;
                 continue;
             }
-            
-            $targetSections = $targetData[$sourceFile]['sections'];
+
+            $targetSections = $normalizedTargetData[$normalizedSourcePath]['sections'];
             $targetCount = $this->countEntries($targetSections);
             $comparison['total_target_entries'] += $targetCount;
-            
+
             // Vergleiche Sektionen
             foreach ($sourceSections as $sectionName => $sourceEntries) {
                 if (!isset($targetSections[$sectionName])) {
@@ -81,9 +93,9 @@ class GLGCompare {
                     }
                     continue;
                 }
-                
+
                 $targetEntries = $targetSections[$sectionName];
-                
+
                 // Vergleiche Keys
                 foreach ($sourceEntries as $key => $value) {
                     if (!isset($targetEntries[$key])) {
@@ -99,11 +111,27 @@ class GLGCompare {
                 }
             }
         }
-        
+
         // Berechne Statistiken
         $comparison['statistics'] = $this->calculateStatistics($comparison);
-        
+
         return $comparison;
+    }
+
+    /**
+     * Normalisiert einen Source-Pfad durch Entfernen des Sprach-Prefix
+     *
+     * @param string $sourcePath z.B. "german/original_sections/admin/config.php"
+     * @param string $language z.B. "german"
+     * @return string z.B. "original_sections/admin/config.php"
+     */
+    private function normalizeSourcePath($sourcePath, $language) {
+        // Entferne Sprach-Prefix am Anfang (z.B. "german/", "spanish/", etc.)
+        $prefix = $language . '/';
+        if (strpos($sourcePath, $prefix) === 0) {
+            return substr($sourcePath, strlen($prefix));
+        }
+        return $sourcePath;
     }
     
     /**
