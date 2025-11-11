@@ -244,6 +244,22 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
                 $fileIndex = 0;
                 foreach ($sourceFiles as $sourceFile => $sourceData) {
                     $fileIndex++;
+
+                    // Prüfe ob User Abbruch angefordert hat
+                    if (isset($_SESSION['glg_stop_requested']) && $_SESSION['glg_stop_requested'] === true) {
+                        error_log('GLG: Stop requested by user');
+                        $_SESSION['glg_progress']['status'] = 'stopped';
+                        $_SESSION['glg_progress']['message'] = 'Übersetzung vom Benutzer abgebrochen';
+                        unset($_SESSION['glg_stop_requested']);
+
+                        $this->_jsonResponse([
+                            'success' => false,
+                            'error' => 'Übersetzung vom Benutzer abgebrochen',
+                            'stopped' => true
+                        ]);
+                        return;
+                    }
+
                     try {
                         $_SESSION['glg_progress']['files_processed'] = $fileIndex;
                         $_SESSION['glg_progress']['current_file'] = $sourceFile;
@@ -388,6 +404,18 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
         ];
 
         $this->_jsonResponse($progress);
+    }
+
+    public function actionStop()
+    {
+        // Setzt Flag zum Abbruch der laufenden Übersetzung
+        $_SESSION['glg_stop_requested'] = true;
+        error_log('GLG: Stop requested via actionStop()');
+
+        $this->_jsonResponse([
+            'success' => true,
+            'message' => 'Stop-Signal gesendet'
+        ]);
     }
 
     public function actionCompare()

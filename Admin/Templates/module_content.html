@@ -133,6 +133,11 @@
             </form>
 
             <div id="glg-generate-messages"></div>
+            <div id="glg-stop-button-container" style="display: none; margin-top: 10px;">
+                <button type="button" class="btn btn-danger btn-lg" id="glg-stop-button">
+                    <i class="fa fa-stop"></i> Übersetzung abbrechen
+                </button>
+            </div>
         </div>
 
         <!-- Compare Tab -->
@@ -387,7 +392,33 @@ jQuery(document).ready(function($) {
 
         html += '</div>';
         $('#glg-generate-messages').html(html);
+
+        // Zeige/verstecke Stop-Button
+        if (progress.status === 'translating' || progress.status === 'reading') {
+            $('#glg-stop-button-container').show();
+        } else {
+            $('#glg-stop-button-container').hide();
+        }
     }
+
+    // Stop-Button Handler
+    $('#glg-stop-button').on('click', function() {
+        if (confirm('Möchten Sie die Übersetzung wirklich abbrechen?')) {
+            $(this).prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Stoppe...');
+
+            $.ajax({
+                url: 'admin.php?do=GambioLanguageGeneratorModuleCenterModule&action=stop',
+                type: 'POST',
+                dataType: 'json',
+                success: function(response) {
+                    console.log('Stop signal sent');
+                },
+                error: function() {
+                    console.log('Error sending stop signal');
+                }
+            });
+        }
+    });
 
     // Generate Form Handler
     $('#glgGenerateForm').on('submit', function(e) {
