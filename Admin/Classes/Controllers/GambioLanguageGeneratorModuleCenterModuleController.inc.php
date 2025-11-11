@@ -241,10 +241,11 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
                 $fileErrors = 0;
 
                 // Verarbeite jede Source-Datei einzeln
-                foreach ($sourceFiles as $fileIndex => $sourceData) {
-                    $sourceFile = $sourceData['source'];
+                $fileIndex = 0;
+                foreach ($sourceFiles as $sourceFile => $sourceData) {
+                    $fileIndex++;
                     try {
-                        $_SESSION['glg_progress']['files_processed'] = $fileIndex + 1;
+                        $_SESSION['glg_progress']['files_processed'] = $fileIndex;
                         $_SESSION['glg_progress']['current_file'] = $sourceFile;
                         $_SESSION['glg_progress']['message'] = "Übersetze $sourceFile nach $targetLanguage...";
 
