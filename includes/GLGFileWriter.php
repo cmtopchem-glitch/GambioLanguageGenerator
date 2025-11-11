@@ -16,9 +16,10 @@ class GLGFileWriter {
     public function __construct($backupEnabled = true) {
         $this->backupEnabled = $backupEnabled;
         $this->backupPath = DIR_FS_CATALOG . 'backup/language_generator/';
-        
+
         if ($this->backupEnabled && !is_dir($this->backupPath)) {
-            mkdir($this->backupPath, 0755, true);
+            mkdir($this->backupPath, 0775, true);
+            @chgrp($this->backupPath, 'www-data');
         }
     }
     
@@ -45,18 +46,22 @@ class GLGFileWriter {
         $targetDir = dirname($targetFile);
         if (!is_dir($targetDir)) {
             error_log('GLGFileWriter: Creating directory: ' . $targetDir);
-            if (!mkdir($targetDir, 0755, true)) {
+            if (!mkdir($targetDir, 0775, true)) {
                 throw new Exception('Konnte Verzeichnis nicht erstellen: ' . $targetDir);
             }
+            // Setze Gruppe auf www-data
+            @chgrp($targetDir, 'www-data');
         }
 
         // Erstelle auch das Hauptsprachverzeichnis falls nicht vorhanden
         $mainLangDir = DIR_FS_CATALOG . 'lang/' . $targetLanguage;
         if (!is_dir($mainLangDir)) {
             error_log('GLGFileWriter: Creating main language directory: ' . $mainLangDir);
-            if (!mkdir($mainLangDir, 0755, true)) {
+            if (!mkdir($mainLangDir, 0775, true)) {
                 throw new Exception('Konnte Hauptsprachverzeichnis nicht erstellen: ' . $mainLangDir);
             }
+            // Setze Gruppe auf www-data
+            @chgrp($mainLangDir, 'www-data');
 
             // Kopiere wichtige Standard-Dateien aus german
             $this->copyLanguageDefaults($targetLanguage);
@@ -253,12 +258,13 @@ class GLGFileWriter {
         $timestamp = date('Y-m-d_His');
         $relativePath = str_replace(DIR_FS_CATALOG, '', $sourceFile);
         $backupFile = $this->backupPath . $timestamp . '/' . $relativePath;
-        
+
         $backupDir = dirname($backupFile);
         if (!is_dir($backupDir)) {
-            mkdir($backupDir, 0755, true);
+            mkdir($backupDir, 0775, true);
+            @chgrp($backupDir, 'www-data');
         }
-        
+
         return copy($sourceFile, $backupFile);
     }
     
@@ -399,7 +405,8 @@ class GLGFileWriter {
             $targetSubDir = $targetDir . '/' . $subDir;
             if (!is_dir($targetSubDir)) {
                 error_log('GLGFileWriter: Creating subdirectory: ' . $subDir);
-                mkdir($targetSubDir, 0755, true);
+                mkdir($targetSubDir, 0775, true);
+                @chgrp($targetSubDir, 'www-data');
 
                 // Kopiere index.html in Unterverzeichnis
                 $indexSource = $sourceDir . '/' . $subDir . '/index.html';
