@@ -9,11 +9,14 @@
  */
 
 class GLGCompare {
-    
+
     private $reader;
-    
+
     public function __construct() {
-        require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGReader.php');
+        // GLGReader wird vom Controller geladen, einfach eine neue Instanz erstellen
+        if (!class_exists('GLGReader')) {
+            require_once(__DIR__ . '/GLGReader.php');
+        }
         $this->reader = new GLGReader();
     }
     
