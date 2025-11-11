@@ -24,7 +24,7 @@ class GLGFileWriter {
     
     /**
      * Schreibt Sprachdateien für eine komplette Source
-     * 
+     *
      * @param array $sourceData Daten aus GLGReader
      * @param string $targetLanguage Zielsprache
      * @return array Ergebnis mit Statistiken
@@ -32,21 +32,36 @@ class GLGFileWriter {
     public function writeSourceFile($sourceData, $targetLanguage) {
         $source = $sourceData['source'];
         $sections = $sourceData['sections'];
-        
+
         // Bestimme Dateipfad
         $targetFile = $this->getTargetFilePath($source, $targetLanguage);
-        
+
         // Erstelle Backup wenn aktiviert
         if ($this->backupEnabled && file_exists($targetFile)) {
             $this->createBackup($targetFile);
         }
-        
-        // Erstelle Verzeichnis wenn nicht vorhanden
+
+        // Erstelle Verzeichnis wenn nicht vorhanden (rekursiv mit allen Parent-Verzeichnissen)
         $targetDir = dirname($targetFile);
         if (!is_dir($targetDir)) {
-            mkdir($targetDir, 0755, true);
+            error_log('GLGFileWriter: Creating directory: ' . $targetDir);
+            if (!mkdir($targetDir, 0755, true)) {
+                throw new Exception('Konnte Verzeichnis nicht erstellen: ' . $targetDir);
+            }
         }
-        
+
+        // Erstelle auch das Hauptsprachverzeichnis falls nicht vorhanden
+        $mainLangDir = DIR_FS_CATALOG . 'lang/' . $targetLanguage;
+        if (!is_dir($mainLangDir)) {
+            error_log('GLGFileWriter: Creating main language directory: ' . $mainLangDir);
+            if (!mkdir($mainLangDir, 0755, true)) {
+                throw new Exception('Konnte Hauptsprachverzeichnis nicht erstellen: ' . $mainLangDir);
+            }
+
+            // Kopiere wichtige Standard-Dateien aus german
+            $this->copyLanguageDefaults($targetLanguage);
+        }
+
         // Prüfe ob es eine GXModule-Datei ist
         if (strpos($source, 'GXModules/') === 0) {
             return $this->writeGXModuleFile($targetFile, $sections);
@@ -323,7 +338,7 @@ class GLGFileWriter {
             'failed' => 0,
             'total_bytes' => 0
         ];
-        
+
         foreach ($results as $result) {
             if ($result['success']) {
                 $stats['success']++;
@@ -332,7 +347,75 @@ class GLGFileWriter {
                 $stats['failed']++;
             }
         }
-        
+
         return $stats;
+    }
+
+    /**
+     * Kopiert Standard-Dateien aus dem German-Verzeichnis in eine neue Sprache
+     */
+    private function copyLanguageDefaults($targetLanguage) {
+        $sourceDir = DIR_FS_CATALOG . 'lang/german';
+        $targetDir = DIR_FS_CATALOG . 'lang/' . $targetLanguage;
+
+        // Wichtige Dateien die kopiert werden sollen
+        $filesToCopy = [
+            'index.html',
+            '.htaccess',
+            'init.inc.php',
+            'php.ini'
+        ];
+
+        foreach ($filesToCopy as $file) {
+            $sourceFile = $sourceDir . '/' . $file;
+            $targetFile = $targetDir . '/' . $file;
+
+            if (file_exists($sourceFile) && !file_exists($targetFile)) {
+                error_log('GLGFileWriter: Copying default file: ' . $file);
+                copy($sourceFile, $targetFile);
+                chmod($targetFile, 0644);
+            }
+        }
+
+        // Erstelle wichtige Unterverzeichnisse
+        $subDirs = [
+            'admin',
+            'modules',
+            'original_sections',
+            'user_sections',
+            'original_mail_templates',
+            'user_mail_templates'
+        ];
+
+        foreach ($subDirs as $subDir) {
+            $targetSubDir = $targetDir . '/' . $subDir;
+            if (!is_dir($targetSubDir)) {
+                error_log('GLGFileWriter: Creating subdirectory: ' . $subDir);
+                mkdir($targetSubDir, 0755, true);
+
+                // Kopiere index.html in Unterverzeichnis
+                $indexSource = $sourceDir . '/' . $subDir . '/index.html';
+                $indexTarget = $targetSubDir . '/index.html';
+                if (file_exists($indexSource)) {
+                    copy($indexSource, $indexTarget);
+                    chmod($indexTarget, 0644);
+                }
+            }
+        }
+
+        // Kopiere Flag und Icon falls vorhanden
+        $sourceFlag = $sourceDir . '/flag.png';
+        $targetFlag = $targetDir . '/flag.png';
+        if (file_exists($sourceFlag) && !file_exists($targetFlag)) {
+            copy($sourceFlag, $targetFlag);
+            chmod($targetFlag, 0644);
+        }
+
+        $sourceIcon = $sourceDir . '/icon.gif';
+        $targetIcon = $targetDir . '/icon.gif';
+        if (file_exists($sourceIcon) && !file_exists($targetIcon)) {
+            copy($sourceIcon, $targetIcon);
+            chmod($targetIcon, 0644);
+        }
     }
 }
