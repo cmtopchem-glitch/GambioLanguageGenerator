@@ -61,15 +61,19 @@ class GLGTranslator {
 
         // System Prompt
         $systemPrompt = "Du bist ein professioneller Übersetzer für E-Commerce Software.
-Übersetze die folgenden Sprachvariablen von $sourceLanguageName nach $targetLanguageName.
+Übersetze die folgenden Sprachvariablen nach $targetLanguageName.
 
-WICHTIGE REGELN:
+WICHTIG - GEMISCHTE QUELLSPRACHEN:
+Die Quelltexte können in VERSCHIEDENEN Sprachen vorliegen (hauptsächlich $sourceLanguageName, aber auch Englisch oder andere Sprachen).
+Erkenne die tatsächliche Sprache jedes Textes automatisch und übersetze ALLES nach $targetLanguageName.
+
+ÜBERSETZUNGSREGELN:
 1. Behalte die JSON-Struktur EXAKT bei
 2. Übersetze NUR die Werte, NICHT die Keys
 3. Behalte Platzhalter wie %s, {name}, [value] etc. bei
 4. Behalte HTML-Tags bei: <br>, <strong>, <span> etc.
 5. Achte auf den E-Commerce Kontext
-6. Sei konsistent bei Fachbegriffen
+6. Sei konsistent bei Fachbegriffen (Warenkorb, Kasse, Versand, etc.)
 7. Antworte NUR mit dem übersetzten JSON, keine Erklärungen
 
 Kontext: $context";

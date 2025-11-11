@@ -64,7 +64,7 @@ class GLGReader {
                   AND source NOT LIKE 'GXModules/%'
                   ORDER BY source, section_name, phrase_name";
 
-        return $this->executeAndGroup($query, $language);
+        return $this->executeAndGroup($query);
     }
     
     /**
@@ -100,43 +100,21 @@ class GLGReader {
                   $moduleFilter
                   ORDER BY source, section_name, phrase_name";
 
-        return $this->executeAndGroup($query, $language);
+        return $this->executeAndGroup($query);
     }
     
     /**
      * Führt Query aus und gruppiert Ergebnisse
      *
      * @param string $query SQL Query
-     * @param string $language Sprachverzeichnis für Pfad-Normalisierung
      * @return array Gruppierte Daten
      */
-    private function executeAndGroup($query, $language = null) {
+    private function executeAndGroup($query) {
         $result = xtc_db_query($query);
         $data = [];
 
-        // Hole alle verfügbaren Sprachen für Pfad-Normalisierung
-        $allLanguages = [];
-        if ($language) {
-            $allLanguages = $this->getAvailableLanguages();
-        }
-
         while ($row = xtc_db_fetch_array($result)) {
             $source = $row['source'];
-
-            // KRITISCH: Normalisiere Source-Pfad
-            // Datenbank kann "english/original_sections/..." enthalten, auch für deutsche Einträge!
-            // Ersetze falsche Sprache am Anfang mit der tatsächlichen Quellsprache
-            if ($language && !empty($allLanguages)) {
-                foreach ($allLanguages as $lang) {
-                    if (strpos($source, $lang . '/') === 0) {
-                        // Pfad beginnt mit einer Sprache - ersetze mit der aktuellen Quellsprache
-                        $source = $language . '/' . substr($source, strlen($lang) + 1);
-                        error_log("GLGReader: Normalized source path from '$row[source]' to '$source'");
-                        break;
-                    }
-                }
-            }
-
             $section = $row['section_name'];
 
             if (!isset($data[$source])) {
@@ -160,21 +138,6 @@ class GLGReader {
         }
 
         return $data;
-    }
-
-    /**
-     * Gibt verfügbare Sprachen zurück
-     */
-    private function getAvailableLanguages() {
-        $query = "SELECT directory FROM languages";
-        $result = xtc_db_query($query);
-
-        $languages = [];
-        while ($row = xtc_db_fetch_array($result)) {
-            $languages[] = $row['directory'];
-        }
-
-        return $languages;
     }
     
     /**
@@ -201,7 +164,7 @@ class GLGReader {
                   AND date_modified > '$since'
                   ORDER BY source, section_name, phrase_name";
 
-        return $this->executeAndGroup($query, $language);
+        return $this->executeAndGroup($query);
     }
     
     /**
