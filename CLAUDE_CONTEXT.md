@@ -1,7 +1,7 @@
 # Claude Code - Aktueller Arbeitsstand
 
-**Datum:** 2025-11-11 22:47 Uhr
-**Letzter Commit:** 81ea899 - FIX CRITICAL: Source path normalization & directory permissions
+**Datum:** 2025-11-11 22:54 Uhr
+**Letzter Commit:** 8dcca2b - FIX: Gemischte Quellsprachen richtig behandeln
 **GitHub:** https://github.com/cmtopchem-glitch/GambioLanguageGenerator
 
 ---
@@ -35,8 +35,8 @@
 4. **Berechtigungen** - 0775 statt 0755 für www-data Schreibzugriff
 5. **foreach Loop** - Korrekte Array-Struktur für sourceFiles
 6. **Live Progress** - Session-basiert mit AJAX Polling alle 500ms
-7. **Source Path Normalisierung** - DB-Pfade mit falscher Sprache werden korrigiert
-8. **Rekursive Directory Creation** - Alle Parent-Verzeichnisse erhalten korrekte Permissions
+7. **Rekursive Directory Creation** - Alle Parent-Verzeichnisse erhalten korrekte Permissions
+8. **Gemischte Quellsprachen** - OpenAI erkennt automatisch Sprache jedes Textes
 
 ### Wichtige Befehle
 Cache loeschen: cd /srv/www/test.redozone && php clearcache.php
@@ -56,6 +56,16 @@ Das Modul soll Gambio-Sprachdateien automatisch uebersetzen:
 - KI-Uebersetzung via OpenAI API
 - Sprachvergleich
 - Einstellungen speichern
+
+### Besonderheit: Gemischte Quellsprachen
+Die Gambio-Datenbank kann für eine Sprache (z.B. deutsch, language_id=2) Einträge mit verschiedenen Source-Pfaden enthalten:
+- `source = "german/buttons.php"` mit deutschem Text
+- `source = "english/buttons.php"` mit englischem Text (!!)
+
+**Lösung:** GLGTranslator.php erweitert OpenAI-Prompt um automatische Sprach-Erkennung:
+- OpenAI erkennt tatsächliche Sprache jedes Textes
+- Übersetzt ALLES zur Zielsprache
+- Funktioniert mit beliebigen Sprachmischungen
 
 ---
 
