@@ -378,13 +378,28 @@ jQuery(document).ready(function($) {
 
         if (progress.total_files > 0) {
             var filePercent = Math.round((progress.files_processed / progress.total_files) * 100);
-            html += '<div style="margin-top: 10px;">';
+            html += '<div style="margin-top: 15px;">';
+
+            // Sprache
+            html += '<div style="margin-bottom: 8px;">';
             html += '<strong>Sprache:</strong> ' + progress.current_language + ' ';
-            html += '(' + (progress.languages_completed + 1) + '/' + progress.total_languages + ')<br>';
-            html += '<strong>Datei:</strong> ' + progress.current_file + '<br>';
-            html += '<strong>Fortschritt:</strong> ' + progress.files_processed + '/' + progress.total_files + ' Dateien (' + filePercent + '%)<br>';
-            html += '<div class="progress" style="margin-top: 10px; height: 25px;">';
-            html += '<div class="progress-bar progress-bar-striped active" style="width: ' + filePercent + '%; line-height: 25px;">';
+            html += '<span class="label label-primary">' + (progress.languages_completed + 1) + '/' + progress.total_languages + '</span>';
+            html += '</div>';
+
+            // Aktuelle Datei - PROMINENT
+            html += '<div style="margin-bottom: 8px; padding: 8px; background: rgba(255,255,255,0.3); border-radius: 4px;">';
+            html += '<i class="fa fa-file-code-o"></i> <strong>Aktuelle Datei:</strong><br>';
+            html += '<code style="font-size: 12px; word-break: break-all;">' + progress.current_file + '</code>';
+            html += '</div>';
+
+            // Fortschritt
+            html += '<div style="margin-bottom: 8px;">';
+            html += '<strong>Fortschritt:</strong> ' + progress.files_processed + ' / ' + progress.total_files + ' Dateien';
+            html += '</div>';
+
+            // Progress Bar
+            html += '<div class="progress" style="margin-top: 10px; height: 30px; margin-bottom: 0;">';
+            html += '<div class="progress-bar progress-bar-striped active" style="width: ' + filePercent + '%; line-height: 30px; font-size: 14px;">';
             html += filePercent + '%';
             html += '</div></div>';
             html += '</div>';
