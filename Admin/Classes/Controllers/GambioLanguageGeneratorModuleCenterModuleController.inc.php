@@ -69,18 +69,27 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
             error_log('GLG: Settings table does not exist yet');
         }
 
+        error_log('GLG: Settings loaded successfully, about to render interface');
+
         $success = $this->_getQueryParameter('success') == '1';
         $error = $this->_getQueryParameter('error') == '1';
 
+        error_log('GLG: Query params - success: ' . ($success ? 'true' : 'false') . ', error: ' . ($error ? 'true' : 'false'));
+
         // Erstelle HTML direkt (ohne Smarty Template erstmal)
+        error_log('GLG: Calling _renderInterface()');
         $html = $this->_renderInterface($languages, $apiProvider, $apiKey, $model, $success, $error);
 
+        error_log('GLG: _renderInterface() returned, HTML length: ' . strlen($html));
+
         // Return proper response object - wie beim AI Product Optimizer
+        error_log('GLG: Creating AdminPageHttpControllerResponse');
         return new AdminPageHttpControllerResponse($this->pageTitle, $html);
     }
 
     private function _renderInterface($languages, $apiProvider, $apiKey, $model, $success, $error)
     {
+        error_log('GLG: _renderInterface() START - Languages count: ' . count($languages));
         ob_start();
         ?>
         <div class="glg-container" style="padding: 20px;">
@@ -455,7 +464,9 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
         });
         </script>
         <?php
-        return ob_get_clean();
+        $html = ob_get_clean();
+        error_log('GLG: _renderInterface() END - HTML length: ' . strlen($html));
+        return $html;
     }
 
     public function actionSave()
