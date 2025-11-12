@@ -1,61 +1,124 @@
 # Claude Code - Aktueller Arbeitsstand
 
-**Datum:** 2025-11-11 22:54 Uhr
-**Letzter Commit:** 8dcca2b - FIX: Gemischte Quellsprachen richtig behandeln
+**Datum:** 2025-11-12 19:55 Uhr
+**Letzter Commit:** b0615f4 - FIX: Standard-Dateien kopieren & Progress-System Routing
 **GitHub:** https://github.com/cmtopchem-glitch/GambioLanguageGenerator
 
 ---
 
-## ✅ Aktueller Status - BETA FUNKTIONSFÄHIG
+## ⚠️ Aktueller Status - IN ENTWICKLUNG (NICHT PRODUKTIV)
 
 ### Was funktioniert
 - ✅ ModuleCenter Integration mit Smarty-Templates
-- ✅ Live Progress Tracking (Session-basiert, AJAX Polling)
-- ✅ Stop-Button zum Abbrechen von Übersetzungen
-- ✅ Automatische Verzeichnis-Erstellung mit korrekten Berechtigungen
-- ✅ Korrekte Pfad-Generierung (`/srv/www/test.redozone/lang/danish/...`)
+- ✅ UI mit Bootstrap-Tabs (Sprachen generieren, Vergleichen, Einstellungen)
+- ✅ API-Settings speichern (OpenAI Key, Provider, Model)
+- ✅ Automatische Verzeichnis-Erstellung mit korrekten Berechtigungen (0775)
+- ✅ Standard-Dateien werden kopiert (flag.png, icon.gif, init.inc.php, admin/*)
 - ✅ 23+ Sprachen unterstützt
-- ✅ Bootstrap-Tabs funktionieren
-- ✅ Detailliertes Logging
+- ✅ Detailliertes Logging via error_log()
+
+### ❌ Was NICHT funktioniert
+- ❌ **Progress-Anzeige:** AJAX Polling funktioniert nicht (Session-Lock Problem)
+- ❌ **Übersetzung startet nicht:** Hängt beim Bootstrap (application_top.php)
+- ❌ **PHP-FPM Worker hängen:** Bei langen Requests/Tests
+- ❌ **Mail-Templates kopieren:** copyDirectoryRecursive() temporär deaktiviert (Timeout)
+- ❌ **Stop-Button:** Erscheint nicht (weil Progress nicht funktioniert)
+
+### Kritische Probleme (2025-11-12)
+
+#### Problem 1: Session-Lock verhindert Progress-Polling
+**Symptom:** Browser zeigt "Starte Übersetzung..." aber keine Progress-Updates
+
+**Ursache:**
+- `actionGenerate()` macht einen Long-Running AJAX Request
+- Session ist während des gesamten Requests gelockt
+- `actionGetProgress()` kann Session nicht lesen (blockiert)
+
+**Versuchte Lösung:**
+- `session_write_close()` nach Progress-Init → POST-Daten nicht mehr lesbar
+
+**TODO:**
+- Alle `$_SESSION['glg_progress']` Updates mit `session_start()` / `session_write_close()` wrappen
+- ODER: Background-Job für Übersetzungen (beste Lösung)
+
+#### Problem 2: Übersetzung startet nie
+**Symptom:** Keine Dateien werden in `/lang/czech/` erstellt
+
+**Ursache (vermutet):**
+- `copyDirectoryRecursive()` hängt bei Mail-Templates
+- Oder: Gambio Bootstrap (application_top.php) hat Probleme
+
+**Aktueller Workaround:**
+- Mail-Templates kopieren deaktiviert (Zeile 436-447 in GLGFileWriter.php)
+
+#### Problem 3: PHP-FPM Worker hängen
+**Symptom:** Server wird langsam, Admin nicht erreichbar
+
+**Ursache:**
+- Test-Scripts mit Gambio-Bootstrap hängen endlos
+- PHP Worker gehen nicht in Timeout
+
+**Lösung:**
+```bash
+sudo systemctl restart php8.2-fpm
+```
 
 ### Wichtige Dateien
-- **Controller:** `Admin/Classes/Controllers/GambioLanguageGeneratorModuleCenterModuleController.inc.php` (420 Zeilen)
+- **Controller:** `Admin/Classes/Controllers/GambioLanguageGeneratorModuleCenterModuleController.inc.php` (650 Zeilen)
+  - Zeile 28-35: Action-Routing für getProgress/stop hinzugefügt
+  - Zeile 157-398: actionGenerate() - Haupt-Übersetzungs-Logik
+  - Zeile 400-427: actionGetProgress() & actionStop() - AJAX Endpoints
+  - Zeile 602-611: _updateProgress() Helper (noch nicht verwendet)
+
 - **Template:** `Admin/Templates/module_content.html` (Smarty mit Tabs, Progress, Stop-Button)
+  - Zeile 345-374: Progress-Polling JavaScript (alle 500ms)
+  - Zeile 438-499: Form Submit Handler mit AJAX
+
+- **GLGFileWriter.php:** `includes/GLGFileWriter.php`
+  - Zeile 361-454: copyLanguageDefaults() - Kopiert Standard-Dateien
+  - Zeile 435-447: copyDirectoryRecursive() für Mail-Templates (DEAKTIVIERT)
+  - Zeile 529-573: copyDirectoryRecursive() Methode
+
 - **Includes:**
-  - `GLGReader.php` - Liest Sprachdaten aus DB
+  - `GLGReader.php` - Liest Sprachdaten aus language_phrases_cache
   - `GLGTranslator.php` - OpenAI/DeepL Integration
   - `GLGFileWriter.php` - Schreibt Dateien mit korrekten Permissions
   - `GLGCompare.php` - Sprachvergleich
   - `GLGCore.php` - Core-Funktionalität
 
-### Kritische Fixes (Heute)
-1. **ModuleCenter Integration** - AdminPageHttpControllerResponse + Smarty
-2. **Tab-Switching** - Eigene glgSwitchTab() Funktion (kein Bootstrap-JS)
-3. **Pfad-Generierung** - Automatisches `lang/` Präfix
-4. **Berechtigungen** - 0775 statt 0755 für www-data Schreibzugriff
-5. **foreach Loop** - Korrekte Array-Struktur für sourceFiles
-6. **Live Progress** - Session-basiert mit AJAX Polling alle 500ms
-7. **Rekursive Directory Creation** - Alle Parent-Verzeichnisse erhalten korrekte Permissions
-8. **Gemischte Quellsprachen** - OpenAI erkennt automatisch Sprache jedes Textes
-
 ### Wichtige Befehle
-Cache loeschen: cd /srv/www/test.redozone && php clearcache.php
-Git Status: cd /srv/www/test.redozone/GXModules/REDOzone/GambioLanguageGenerator && git status
-Syntax pruefen: php -l /srv/www/test.redozone/GXModules/REDOzone/GambioLanguageGenerator/Admin/Classes/Controllers/GambioLanguageGeneratorModuleCenterModuleController.inc.php
+```bash
+# Cache löschen (IMMER nach Code-Änderungen!)
+cd /srv/www/test.redozone && php clearcache.php
+
+# Git Status
+cd /srv/www/test.redozone/GXModules/REDOzone/GambioLanguageGenerator && git status
+
+# Syntax prüfen
+php -l Admin/Classes/Controllers/GambioLanguageGeneratorModuleCenterModuleController.inc.php
+
+# PHP-FPM neu starten (bei hängenden Workern)
+sudo systemctl restart php8.2-fpm
+
+# Czech-Verzeichnis prüfen
+ls -la /srv/www/test.redozone/lang/czech/
+```
 
 ### Gambio-Kontext
-- Version: Gambio 4.x (kompatibel mit 3.0-4.9)
-- Framework: GXModules System
-- Parent Class: AbstractModuleCenterModuleController
-- Response Types: AdminPageHttpControllerResponse, AdminLayoutHttpControllerResponse
+- **Version:** Gambio 4.x (kompatibel mit 3.0-4.9)
+- **Framework:** GXModules System
+- **Parent Class:** AbstractModuleCenterModuleController
+- **Response Types:** AdminPageHttpControllerResponse, AdminLayoutHttpControllerResponse
+- **Datenbank:** language_phrases_cache Tabelle
+- **Session:** PHP Session für Progress-Tracking
 
-### Modul-Funktionalitaet
-Das Modul soll Gambio-Sprachdateien automatisch uebersetzen:
-- Quellsprache waehlen
-- Zielsprachen auswaehlen
-- KI-Uebersetzung via OpenAI API
-- Sprachvergleich
-- Einstellungen speichern
+### Modul-Funktionalität
+Das Modul soll Gambio-Sprachdateien automatisch übersetzen:
+1. Quellsprache wählen (z.B. german)
+2. Zielsprachen auswählen (z.B. czech, italian)
+3. KI-Übersetzung via OpenAI API (GPT-4o, GPT-4o-mini)
+4. Sprachdateien schreiben nach `/lang/{sprache}/`
+5. Standard-Dateien kopieren (flag.png, icon.gif, init.inc.php, etc.)
 
 ### Besonderheit: Gemischte Quellsprachen
 Die Gambio-Datenbank kann für eine Sprache (z.B. deutsch, language_id=2) Einträge mit verschiedenen Source-Pfaden enthalten:
@@ -69,14 +132,66 @@ Die Gambio-Datenbank kann für eine Sprache (z.B. deutsch, language_id=2) Eintr�
 
 ---
 
-## Fuer den neuen Client
+## 📋 Für den nächsten Entwickler
 
-Du kannst direkt weitermachen! Der Code ist committed und gepusht zu GitHub.
+### Sofort-Aufgaben (Critical)
+1. **Session-Lock Problem lösen**
+   - Option A: `_updateProgress()` Helper an allen 23 Stellen verwenden
+   - Option B: Background-Job für Übersetzungen (empfohlen!)
 
-**Deine erste Aufgabe:** Das ModuleCenter-Integrationsproblem loesen - das Modul soll IM ModuleCenter-Frame erscheinen, nicht als eigenstaendige Seite.
+2. **Übersetzung zum Laufen bringen**
+   - Debug: Warum hängt Bootstrap?
+   - Test: Minimales Script ohne application_top.php
 
-**Tipp:** Schau dir an, wie ItRechtModuleCenterModuleController die Integration macht.
+3. **Mail-Templates kopieren fixen**
+   - copyDirectoryRecursive() optimieren (Chunks, Timeout handling)
+   - Oder: Asynchron mit AJAX Progress
 
-**Server:** test.redozone.de | **User:** cm | **Pfad:** /srv/www/test.redozone/GXModules/REDOzone/GambioLanguageGenerator/
+### Mittelfristig (High Priority)
+4. **Background-Job implementieren**
+   - Cronjob oder Gearman/Redis Queue
+   - Browser zeigt nur Progress, läuft nicht Request
 
-Viel Erfolg!
+5. **Error-Handling verbessern**
+   - Try/Catch um API-Calls
+   - Retry-Logik bei Timeouts
+   - Partial Success (einige Dateien übersetzt)
+
+### Nice-to-Have
+6. **Testing**
+   - Unit Tests für GLGReader, GLGTranslator, GLGFileWriter
+   - Integration Tests ohne echten API-Call
+
+7. **Performance**
+   - Batch-Übersetzungen (mehrere Dateien pro API-Call)
+   - Rate-Limiting für OpenAI
+
+---
+
+## 🐛 Debugging-Tipps
+
+### Übersetzung hängt?
+1. Prüfe ob Dateien erstellt werden: `ls -la /srv/www/test.redozone/lang/czech/`
+2. Prüfe PHP-FPM Worker: `ps aux | grep php-fpm | grep -v grep`
+3. Prüfe Error-Log: `tail -50 /srv/www/test.redozone/export/php_errors.log | grep GLG`
+4. Bei Hang: `sudo systemctl restart php8.2-fpm`
+
+### Progress funktioniert nicht?
+1. Browser DevTools öffnen (F12)
+2. Network Tab: AJAX Requests zu `action=getProgress` prüfen
+3. Console Tab: JavaScript-Fehler suchen
+4. Prüfe Session: `grep -r "glg_progress" /var/lib/php/sessions/` (mit sudo)
+
+### AJAX kommt nicht an?
+1. Eingeloggt im Admin? (sonst 302 Redirect)
+2. Cache gelöscht? `php clearcache.php`
+3. Syntax OK? `php -l Controller.php`
+
+---
+
+**Server:** test.redozone.de
+**User:** cm
+**Pfad:** /srv/www/test.redozone/GXModules/REDOzone/GambioLanguageGenerator/
+**Branch:** main
+
+Viel Erfolg! 🚀

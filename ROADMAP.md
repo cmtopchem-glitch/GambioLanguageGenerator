@@ -1,12 +1,23 @@
 # Gambio Language Generator - Roadmap
 
 **Projekt:** AI-gestützte Übersetzung von Gambio-Sprachdateien
-**Status:** Beta - Funktionsfähig mit bekannten Verbesserungsmöglichkeiten
-**Letzte Aktualisierung:** 2025-11-11
+**Status:** In Entwicklung - Kernfunktion hängt (nicht produktiv)
+**Letzte Aktualisierung:** 2025-11-12
 
 ---
 
-## ✅ COMPLETED (Heute umgesetzt)
+## ⚠️ AKTUELLER STATUS (2025-11-12)
+
+**Kritische Blocker:**
+1. ❌ Übersetzung startet nicht (hängt beim Bootstrap oder copyDirectoryRecursive)
+2. ❌ Progress-Anzeige funktioniert nicht (Session-Lock Problem)
+3. ❌ PHP-FPM Worker hängen bei Tests
+
+**Siehe CLAUDE_CONTEXT.md für Details!**
+
+---
+
+## ✅ COMPLETED (2025-11-11 & 2025-11-12)
 
 ### 1. ModuleCenter Integration ✅
 - [x] Controller nach AIProductOptimizer-Muster umgebaut
