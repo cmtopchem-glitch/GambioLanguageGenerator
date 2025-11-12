@@ -158,6 +158,12 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
     {
         error_log('GLG: actionGenerate() called');
 
+        // Lese POST-Daten BEVOR wir Session schließen
+        $sourceLanguage = $this->_getPostData('sourceLanguage');
+        $targetLanguages = $this->_getPostData('targetLanguages');
+
+        error_log('GLG: Source: ' . $sourceLanguage . ', Targets: ' . print_r($targetLanguages, true));
+
         // Initialisiere Session-Status
         $_SESSION['glg_progress'] = [
             'status' => 'starting',
@@ -170,10 +176,9 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
             'message' => 'Starte Übersetzung...'
         ];
 
-        $sourceLanguage = $this->_getPostData('sourceLanguage');
-        $targetLanguages = $this->_getPostData('targetLanguages');
-
-        error_log('GLG: Source: ' . $sourceLanguage . ', Targets: ' . print_r($targetLanguages, true));
+        // Session schließen damit Progress-Polling funktioniert!
+        session_write_close();
+        error_log('GLG: Session closed, progress polling now available');
 
         // Validierung
         if (empty($sourceLanguage)) {
@@ -216,23 +221,29 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
             // Lese Quellsprache (gruppiert nach Dateien)
             error_log('GLG: Reading source language data...');
-            $_SESSION['glg_progress']['message'] = 'Lese Quelldateien...';
-            $_SESSION['glg_progress']['status'] = 'reading';
+            $this->_updateProgress([
+                'message' => 'Lese Quelldateien...',
+                'status' => 'reading'
+            ]);
 
             $sourceFiles = $reader->readLanguageData($sourceLanguage);
 
             if (empty($sourceFiles)) {
-                $_SESSION['glg_progress']['status'] = 'error';
-                $_SESSION['glg_progress']['message'] = 'Keine Sprachdateien gefunden';
+                $this->_updateProgress([
+                    'status' => 'error',
+                    'message' => 'Keine Sprachdateien gefunden'
+                ]);
                 $this->_jsonResponse(['success' => false, 'error' => 'Keine Sprachdateien in Quellsprache gefunden']);
                 return;
             }
 
             error_log('GLG: Found ' . count($sourceFiles) . ' source files');
 
-            $_SESSION['glg_progress']['total_files'] = count($sourceFiles);
-            $_SESSION['glg_progress']['total_languages'] = count($targetLanguages);
-            $_SESSION['glg_progress']['status'] = 'translating';
+            $this->_updateProgress([
+                'total_files' => count($sourceFiles),
+                'total_languages' => count($targetLanguages),
+                'status' => 'translating'
+            ]);
 
             $results = [];
             $totalEntriesProcessed = 0;
@@ -240,9 +251,11 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
             // Übersetze in jede Zielsprache
             foreach ($targetLanguages as $langIndex => $targetLanguage) {
-                $_SESSION['glg_progress']['current_language'] = $targetLanguage;
-                $_SESSION['glg_progress']['languages_completed'] = $langIndex;
-                $_SESSION['glg_progress']['files_processed'] = 0;
+                $this->_updateProgress([
+                    'current_language' => $targetLanguage,
+                    'languages_completed' => $langIndex,
+                    'files_processed' => 0
+                ]);
                 error_log('GLG: Translating to ' . $targetLanguage);
                 $filesWritten = 0;
                 $totalEntries = 0;
@@ -254,11 +267,19 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
                     $fileIndex++;
 
                     // Prüfe ob User Abbruch angefordert hat
-                    if (isset($_SESSION['glg_stop_requested']) && $_SESSION['glg_stop_requested'] === true) {
-                        error_log('GLG: Stop requested by user');
-                        $_SESSION['glg_progress']['status'] = 'stopped';
-                        $_SESSION['glg_progress']['message'] = 'Übersetzung vom Benutzer abgebrochen';
+                    session_start();
+                    $stopRequested = isset($_SESSION['glg_stop_requested']) && $_SESSION['glg_stop_requested'] === true;
+                    if ($stopRequested) {
                         unset($_SESSION['glg_stop_requested']);
+                    }
+                    session_write_close();
+
+                    if ($stopRequested) {
+                        error_log('GLG: Stop requested by user');
+                        $this->_updateProgress([
+                            'status' => 'stopped',
+                            'message' => 'Übersetzung vom Benutzer abgebrochen'
+                        ]);
 
                         $this->_jsonResponse([
                             'success' => false,
@@ -269,9 +290,11 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
                     }
 
                     try {
-                        $_SESSION['glg_progress']['files_processed'] = $fileIndex;
-                        $_SESSION['glg_progress']['current_file'] = $sourceFile;
-                        $_SESSION['glg_progress']['message'] = "Übersetze $sourceFile nach $targetLanguage...";
+                        $this->_updateProgress([
+                            'files_processed' => $fileIndex,
+                            'current_file' => $sourceFile,
+                            'message' => "Übersetze $sourceFile nach $targetLanguage..."
+                        ]);
 
                         error_log('GLG: Processing file: ' . $sourceFile);
 
@@ -362,10 +385,18 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
             $totalProcessed = array_sum(array_column($results, 'entries'));
             $totalErrors = count($errors);
 
-            $_SESSION['glg_progress']['status'] = 'completed';
-            $_SESSION['glg_progress']['message'] = 'Übersetzung abgeschlossen!';
-            $_SESSION['glg_progress']['files_processed'] = $_SESSION['glg_progress']['total_files'];
-            $_SESSION['glg_progress']['languages_completed'] = $_SESSION['glg_progress']['total_languages'];
+            // Hole total_files und total_languages für finalen Update
+            session_start();
+            $totalFiles = $_SESSION['glg_progress']['total_files'] ?? 0;
+            $totalLanguages = $_SESSION['glg_progress']['total_languages'] ?? 0;
+            session_write_close();
+
+            $this->_updateProgress([
+                'status' => 'completed',
+                'message' => 'Übersetzung abgeschlossen!',
+                'files_processed' => $totalFiles,
+                'languages_completed' => $totalLanguages
+            ]);
 
             if ($totalErrors > 0) {
                 $this->_logAction('generate', $sourceLanguage, implode(',', $targetLanguages), 'success',
@@ -390,8 +421,10 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
         } catch (Exception $e) {
             error_log('GLG Generate Error: ' . $e->getMessage());
-            $_SESSION['glg_progress']['status'] = 'error';
-            $_SESSION['glg_progress']['message'] = 'Fehler: ' . $e->getMessage();
+            $this->_updateProgress([
+                'status' => 'error',
+                'message' => 'Fehler: ' . $e->getMessage()
+            ]);
             $this->_logAction('generate', $sourceLanguage, implode(',', $targetLanguages), 'error', $e->getMessage());
             $this->_jsonResponse(['success' => false, 'error' => $e->getMessage()]);
         }
@@ -400,6 +433,8 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
     public function actionGetProgress()
     {
         // Gibt den aktuellen Fortschritt zurück (für AJAX Polling)
+        // Session starten, lesen, sofort schließen
+        session_start();
         $progress = $_SESSION['glg_progress'] ?? [
             'status' => 'idle',
             'message' => 'Keine laufende Übersetzung',
@@ -410,6 +445,7 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
             'current_file' => '',
             'current_language' => ''
         ];
+        session_write_close();
 
         $this->_jsonResponse($progress);
     }
@@ -417,7 +453,11 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
     public function actionStop()
     {
         // Setzt Flag zum Abbruch der laufenden Übersetzung
+        // Session starten, Flag setzen, sofort schließen
+        session_start();
         $_SESSION['glg_stop_requested'] = true;
+        session_write_close();
+
         error_log('GLG: Stop requested via actionStop()');
 
         $this->_jsonResponse([
