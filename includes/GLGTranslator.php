@@ -9,19 +9,21 @@
  */
 
 class GLGTranslator {
-    
+
     private $apiProvider;
     private $apiKey;
     private $model;
     private $temperature;
     private $maxTokens;
-    
+    private $systemPrompt;
+
     public function __construct($settings) {
         $this->apiProvider = $settings['apiProvider'] ?? 'openai';
         $this->apiKey = $settings['apiKey'] ?? '';
         $this->model = $settings['model'] ?? 'gpt-4o';
         $this->temperature = floatval($settings['temperature'] ?? 0.3);
         $this->maxTokens = intval($settings['maxTokens'] ?? 4000);
+        $this->systemPrompt = $settings['systemPrompt'] ?? $this->getDefaultSystemPrompt();
     }
     
     /**
@@ -59,24 +61,14 @@ class GLGTranslator {
         // Erstelle JSON für die Übersetzung
         $sourceJson = json_encode($entries, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
-        // System Prompt
-        $systemPrompt = "Du bist ein professioneller Übersetzer für E-Commerce Software.
-Übersetze die folgenden Sprachvariablen nach $targetLanguageName.
+        // System Prompt mit Variablen-Ersetzung
+        $systemPrompt = str_replace(
+            ['{{sourceLanguageName}}', '{{targetLanguageName}}', '{{context}}'],
+            [$sourceLanguageName, $targetLanguageName, $context],
+            $this->systemPrompt
+        );
 
-WICHTIG - GEMISCHTE QUELLSPRACHEN:
-Die Quelltexte können in VERSCHIEDENEN Sprachen vorliegen (hauptsächlich $sourceLanguageName, aber auch Englisch oder andere Sprachen).
-Erkenne die tatsächliche Sprache jedes Textes automatisch und übersetze ALLES nach $targetLanguageName.
-
-ÜBERSETZUNGSREGELN:
-1. Behalte die JSON-Struktur EXAKT bei
-2. Übersetze NUR die Werte, NICHT die Keys
-3. Behalte Platzhalter wie %s, {name}, [value] etc. bei
-4. Behalte HTML-Tags bei: <br>, <strong>, <span> etc.
-5. Achte auf den E-Commerce Kontext
-6. Sei konsistent bei Fachbegriffen (Warenkorb, Kasse, Versand, etc.)
-7. Antworte NUR mit dem übersetzten JSON, keine Erklärungen
-
-Kontext: $context";
+        error_log("GLGTranslator: Using system prompt (first 100 chars): " . substr($systemPrompt, 0, 100));
 
         $userPrompt = "Übersetze diese Sprachvariablen:\n\n$sourceJson";
         
@@ -304,7 +296,7 @@ Kontext: $context";
     
     /**
      * Optimiert die Batch-Größe basierend auf geschätzten Tokens
-     * 
+     *
      * @param array $entries Einträge
      * @return array Batches
      */
@@ -312,27 +304,52 @@ Kontext: $context";
         $batches = [];
         $currentBatch = [];
         $estimatedTokens = 0;
-        
+
         // Schätze ca. 1 Token pro 4 Zeichen (konservativ)
         $maxBatchTokens = $this->maxTokens * 0.7; // 70% für Input, Rest für Output
-        
+
         foreach ($entries as $key => $value) {
             $entryTokens = strlen($key . $value) / 4;
-            
+
             if ($estimatedTokens + $entryTokens > $maxBatchTokens && !empty($currentBatch)) {
                 $batches[] = $currentBatch;
                 $currentBatch = [];
                 $estimatedTokens = 0;
             }
-            
+
             $currentBatch[$key] = $value;
             $estimatedTokens += $entryTokens;
         }
-        
+
         if (!empty($currentBatch)) {
             $batches[] = $currentBatch;
         }
-        
+
         return $batches;
+    }
+
+    /**
+     * Gibt den Default System Prompt zurück (Fallback)
+     */
+    private function getDefaultSystemPrompt() {
+        return "Du bist ein professioneller Übersetzer für E-Commerce Software.
+Übersetze die folgenden Sprachvariablen von {{sourceLanguageName}} nach {{targetLanguageName}}.
+
+WICHTIG - QUELLSPRACHE BEACHTEN:
+Die Quelltexte SOLLTEN in {{sourceLanguageName}} vorliegen.
+Falls einzelne Texte in einer anderen Sprache sind, übersetze sie trotzdem nach {{targetLanguageName}}.
+ABER: Bevorzuge {{sourceLanguageName}} als Ausgangssprache für bessere Übersetzungsqualität.
+
+ÜBERSETZUNGSREGELN:
+1. Behalte die JSON-Struktur EXAKT bei
+2. Übersetze NUR die Werte, NICHT die Keys
+3. Behalte Platzhalter wie %s, {name}, [value] etc. EXAKT bei
+4. Behalte HTML-Tags bei: <br>, <strong>, <span> etc.
+5. Achte auf den E-Commerce Kontext
+6. Sei konsistent bei Fachbegriffen (Warenkorb = Shopping Cart, Kasse = Checkout, etc.)
+7. Verwende die formelle Anrede (Sie) wenn die Quellsprache formell ist
+8. Antworte NUR mit dem übersetzten JSON, keine Erklärungen oder Markdown
+
+Kontext: {{context}}";
     }
 }

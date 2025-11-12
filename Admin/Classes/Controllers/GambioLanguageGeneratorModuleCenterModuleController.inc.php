@@ -51,11 +51,12 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
         $apiProvider = 'openai';
         $apiKey = '';
         $model = 'gpt-4o';
+        $systemPrompt = $this->_getDefaultSystemPrompt();
 
         // Prüfe ob Tabelle existiert und lade Settings
         $tableCheck = xtc_db_query("SHOW TABLES LIKE 'rz_glg_settings'");
         if (xtc_db_num_rows($tableCheck) > 0) {
-            $query = "SELECT setting_key, setting_value FROM rz_glg_settings WHERE setting_key IN ('apiProvider', 'apiKey', 'model')";
+            $query = "SELECT setting_key, setting_value FROM rz_glg_settings WHERE setting_key IN ('apiProvider', 'apiKey', 'model', 'systemPrompt')";
             $result = xtc_db_query($query);
 
             while ($row = xtc_db_fetch_array($result)) {
@@ -67,6 +68,9 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
                 }
                 if ($row['setting_key'] == 'model') {
                     $model = $row['setting_value'];
+                }
+                if ($row['setting_key'] == 'systemPrompt') {
+                    $systemPrompt = $row['setting_value'];
                 }
             }
         }
@@ -84,6 +88,7 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
         $smarty->assign('apiProvider', $apiProvider);
         $smarty->assign('apiKey', $apiKey);
         $smarty->assign('model', $model);
+        $smarty->assign('systemPrompt', $systemPrompt);
         $smarty->assign('success', $success);
         $smarty->assign('error', $error);
 
@@ -104,6 +109,7 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
         $apiProvider = $this->_getPostData('apiProvider');
         $apiKey = $this->_getPostData('apiKey');
         $model = $this->_getPostData('model');
+        $systemPrompt = $this->_getPostData('systemPrompt');
 
         error_log('GLG: Received data - Provider: ' . $apiProvider . ', Model: ' . $model . ', API Key length: ' . strlen($apiKey));
 
@@ -113,11 +119,17 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
             exit;
         }
 
+        // Wenn kein System Prompt angegeben, verwende Default
+        if (empty($systemPrompt)) {
+            $systemPrompt = $this->_getDefaultSystemPrompt();
+        }
+
         try {
             error_log('GLG: Starting to save settings...');
             $this->_saveSetting('apiProvider', $apiProvider);
             $this->_saveSetting('apiKey', $apiKey);
             $this->_saveSetting('model', $model);
+            $this->_saveSetting('systemPrompt', $systemPrompt);
 
             error_log('GLG: All settings saved successfully, redirecting to success');
             header('Location: admin.php?do=GambioLanguageGeneratorModuleCenterModule&success=1');
@@ -564,7 +576,8 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
             'apiKey' => '',
             'model' => 'gpt-4o',
             'temperature' => 0.3,
-            'maxTokens' => 4000
+            'maxTokens' => 4000,
+            'systemPrompt' => $this->_getDefaultSystemPrompt()
         ];
 
         $query = "SELECT setting_key, setting_value FROM rz_glg_settings";
@@ -645,6 +658,31 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
             $_SESSION['glg_progress'][$key] = $value;
         }
         session_write_close();
+    }
+
+    /**
+     * Gibt den Default System Prompt zurück
+     */
+    private function _getDefaultSystemPrompt() {
+        return "Du bist ein professioneller Übersetzer für E-Commerce Software.
+Übersetze die folgenden Sprachvariablen von {{sourceLanguageName}} nach {{targetLanguageName}}.
+
+WICHTIG - QUELLSPRACHE BEACHTEN:
+Die Quelltexte SOLLTEN in {{sourceLanguageName}} vorliegen.
+Falls einzelne Texte in einer anderen Sprache sind, übersetze sie trotzdem nach {{targetLanguageName}}.
+ABER: Bevorzuge {{sourceLanguageName}} als Ausgangssprache für bessere Übersetzungsqualität.
+
+ÜBERSETZUNGSREGELN:
+1. Behalte die JSON-Struktur EXAKT bei
+2. Übersetze NUR die Werte, NICHT die Keys
+3. Behalte Platzhalter wie %s, {name}, [value] etc. EXAKT bei
+4. Behalte HTML-Tags bei: <br>, <strong>, <span> etc.
+5. Achte auf den E-Commerce Kontext
+6. Sei konsistent bei Fachbegriffen (Warenkorb = Shopping Cart, Kasse = Checkout, etc.)
+7. Verwende die formelle Anrede (Sie) wenn die Quellsprache formell ist
+8. Antworte NUR mit dem übersetzten JSON, keine Erklärungen oder Markdown
+
+Kontext: {{context}}";
     }
 }
 }
