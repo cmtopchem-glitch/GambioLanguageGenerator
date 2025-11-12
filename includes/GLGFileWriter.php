@@ -367,7 +367,9 @@ class GLGFileWriter {
             'index.html',
             '.htaccess',
             'init.inc.php',
-            'php.ini'
+            'php.ini',
+            'flag.png',
+            'icon.gif'
         ];
 
         foreach ($filesToCopy as $file) {
@@ -405,6 +407,50 @@ class GLGFileWriter {
                     chmod($indexTarget, 0644);
                 }
             }
+        }
+
+        // Kopiere admin-spezifische Dateien
+        $adminFiles = [
+            'admin/init.inc.php',
+            'admin/images/icon.gif'
+        ];
+
+        foreach ($adminFiles as $adminFile) {
+            $sourceFile = $sourceDir . '/' . $adminFile;
+            $targetFile = $targetDir . '/' . $adminFile;
+
+            // Erstelle Unterverzeichnis falls nötig
+            $targetFileDir = dirname($targetFile);
+            if (!is_dir($targetFileDir)) {
+                $this->createDirectoryRecursive($targetFileDir);
+            }
+
+            if (file_exists($sourceFile) && !file_exists($targetFile)) {
+                error_log('GLGFileWriter: Copying admin file: ' . $adminFile);
+                copy($sourceFile, $targetFile);
+                chmod($targetFile, 0644);
+            }
+        }
+
+        // Kopiere Mail-Template Verzeichnisse komplett
+        // TEMPORÄR DEAKTIVIERT - könnte hängen
+        /*
+        $this->copyDirectoryRecursive(
+            $sourceDir . '/original_mail_templates',
+            $targetDir . '/original_mail_templates'
+        );
+
+        $this->copyDirectoryRecursive(
+            $sourceDir . '/user_mail_templates',
+            $targetDir . '/user_mail_templates'
+        );
+        */
+        // Stattdessen: Nur leere Verzeichnisse erstellen
+        if (!is_dir($targetDir . '/original_mail_templates')) {
+            $this->createDirectoryRecursive($targetDir . '/original_mail_templates');
+        }
+        if (!is_dir($targetDir . '/user_mail_templates')) {
+            $this->createDirectoryRecursive($targetDir . '/user_mail_templates');
         }
 
         // Kopiere Flag und Icon falls vorhanden
@@ -480,6 +526,59 @@ class GLGFileWriter {
 
         error_log("GLGFileWriter: Created directory with 0775 permissions: $dir");
 
+        return true;
+    }
+
+    /**
+     * Kopiert ein Verzeichnis rekursiv
+     *
+     * @param string $source Quellverzeichnis
+     * @param string $target Zielverzeichnis
+     * @return bool Erfolg
+     */
+    private function copyDirectoryRecursive($source, $target) {
+        // Prüfe ob Quelle existiert
+        if (!is_dir($source)) {
+            error_log("GLGFileWriter: Source directory does not exist: $source");
+            return false;
+        }
+
+        // Erstelle Zielverzeichnis
+        if (!is_dir($target)) {
+            $this->createDirectoryRecursive($target);
+        }
+
+        // Öffne Quellverzeichnis
+        $dir = opendir($source);
+        if (!$dir) {
+            error_log("GLGFileWriter: Cannot open source directory: $source");
+            return false;
+        }
+
+        // Kopiere alle Dateien und Unterverzeichnisse
+        while (($file = readdir($dir)) !== false) {
+            // Überspringe . und ..
+            if ($file === '.' || $file === '..') {
+                continue;
+            }
+
+            $sourcePath = $source . '/' . $file;
+            $targetPath = $target . '/' . $file;
+
+            if (is_dir($sourcePath)) {
+                // Rekursiv kopieren bei Unterverzeichnissen
+                $this->copyDirectoryRecursive($sourcePath, $targetPath);
+            } else {
+                // Datei kopieren
+                if (!file_exists($targetPath)) {
+                    copy($sourcePath, $targetPath);
+                    chmod($targetPath, 0644);
+                    error_log("GLGFileWriter: Copied file: $file");
+                }
+            }
+        }
+
+        closedir($dir);
         return true;
     }
 }

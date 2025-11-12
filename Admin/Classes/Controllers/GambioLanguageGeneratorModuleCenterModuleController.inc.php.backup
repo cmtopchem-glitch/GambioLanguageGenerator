@@ -170,6 +170,9 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
             'message' => 'Starte Übersetzung...'
         ];
 
+        // WICHTIG: Session freigeben damit Progress-Polling funktioniert!
+        session_write_close();
+
         $sourceLanguage = $this->_getPostData('sourceLanguage');
         $targetLanguages = $this->_getPostData('targetLanguages');
 
