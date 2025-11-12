@@ -51,6 +51,9 @@ class GLGReader {
     private function readCoreFiles($language) {
         $language = xtc_db_input($language);
 
+        // WICHTIG: Filtere auch nach source-Pfad, nicht nur nach language_id!
+        // Grund: language_phrases_cache kann für language_id=2 (german) auch
+        // Einträge mit source="english/..." oder source="french/..." enthalten
         $query = "SELECT
                     source,
                     section_name,
@@ -61,8 +64,11 @@ class GLGReader {
                   WHERE language_id = (
                     SELECT languages_id FROM languages WHERE directory = '$language'
                   )
+                  AND source LIKE '$language/%'
                   AND source NOT LIKE 'GXModules/%'
                   ORDER BY source, section_name, phrase_name";
+
+        error_log("GLGReader: Reading core files with filter: language_id for '$language' AND source LIKE '$language/%'");
 
         return $this->executeAndGroup($query);
     }
@@ -86,6 +92,9 @@ class GLGReader {
             $moduleFilter = ' AND (' . implode(' OR ', $likeConditions) . ')';
         }
 
+        // WICHTIG: Filtere auch nach Sprache im source-Pfad!
+        // GXModules Pfade: GXModules/ModuleName/Admin/TextPhrases/german/sections/...
+        // Wir filtern auf '/$language/' im Pfad
         $query = "SELECT
                     source,
                     section_name,
@@ -97,8 +106,11 @@ class GLGReader {
                     SELECT languages_id FROM languages WHERE directory = '$language'
                   )
                   AND source LIKE 'GXModules/%'
+                  AND source LIKE '%/$language/%'
                   $moduleFilter
                   ORDER BY source, section_name, phrase_name";
+
+        error_log("GLGReader: Reading GXModules with filter: language_id for '$language' AND source LIKE '%/$language/%'");
 
         return $this->executeAndGroup($query);
     }
@@ -151,6 +163,7 @@ class GLGReader {
         $since = xtc_db_input($since);
         $language = xtc_db_input($language);
 
+        // Filtere nach source-Pfad um inkonsistente Daten zu vermeiden
         $query = "SELECT
                     source,
                     section_name,
@@ -161,6 +174,7 @@ class GLGReader {
                   WHERE language_id = (
                     SELECT languages_id FROM languages WHERE directory = '$language'
                   )
+                  AND (source LIKE '$language/%' OR source LIKE '%/$language/%')
                   AND date_modified > '$since'
                   ORDER BY source, section_name, phrase_name";
 
@@ -169,27 +183,29 @@ class GLGReader {
     
     /**
      * Prüft welche Source-Dateien existieren
-     * 
+     *
      * @param string $language Sprachverzeichnis
      * @return array Liste der Source-Dateien
      */
     public function getSourceFiles($language) {
         $language = xtc_db_input($language);
-        
+
+        // Filtere nach source-Pfad um inkonsistente Daten zu vermeiden
         $query = "SELECT DISTINCT source
                   FROM language_phrases_cache
                   WHERE language_id = (
                     SELECT languages_id FROM languages WHERE directory = '$language'
                   )
+                  AND (source LIKE '$language/%' OR source LIKE '%/$language/%')
                   ORDER BY source";
-        
+
         $result = xtc_db_query($query);
         $sources = [];
-        
+
         while ($row = xtc_db_fetch_array($result)) {
             $sources[] = $row['source'];
         }
-        
+
         return $sources;
     }
     
