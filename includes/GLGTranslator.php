@@ -84,6 +84,7 @@ class GLGTranslator {
             'max_tokens' => $this->maxTokens
         ];
         
+        error_log("GLGTranslator: Sending request to OpenAI API...");
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
@@ -92,15 +93,32 @@ class GLGTranslator {
             'Content-Type: application/json',
             'Authorization: Bearer ' . $this->apiKey
         ]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 120);
-        
+        curl_setopt($ch, CURLOPT_TIMEOUT, 120);           // Maximale Request-Zeit
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);    // Connection-Timeout
+
+        $startTime = microtime(true);
         $response = curl_exec($ch);
+        $duration = round(microtime(true) - $startTime, 2);
+
+        // Prüfe auf cURL Fehler
+        if ($response === false) {
+            $curlError = curl_error($ch);
+            $curlErrno = curl_errno($ch);
+            curl_close($ch);
+            error_log("GLGTranslator: cURL Error #{$curlErrno}: {$curlError} (after {$duration}s)");
+            throw new Exception("OpenAI API Connection Error: {$curlError}");
+        }
+
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        
+
+        error_log("GLGTranslator: Received response from OpenAI (HTTP {$httpCode}, {$duration}s)");
+
         if ($httpCode !== 200) {
             $error = json_decode($response, true);
-            throw new Exception('OpenAI API Fehler: ' . ($error['error']['message'] ?? 'Unbekannter Fehler'));
+            $errorMsg = $error['error']['message'] ?? 'Unbekannter Fehler';
+            error_log("GLGTranslator: OpenAI API Error (HTTP {$httpCode}): {$errorMsg}");
+            throw new Exception('OpenAI API Fehler: ' . $errorMsg);
         }
         
         $result = json_decode($response, true);
@@ -117,11 +135,13 @@ class GLGTranslator {
         $translatedText = trim($translatedText);
         
         $translated = json_decode($translatedText, true);
-        
+
         if (!is_array($translated)) {
+            error_log("GLGTranslator: Failed to parse translation as JSON");
             throw new Exception('Übersetzung konnte nicht als JSON geparst werden');
         }
-        
+
+        error_log("GLGTranslator: Successfully translated " . count($translated) . " entries");
         return $translated;
     }
     
