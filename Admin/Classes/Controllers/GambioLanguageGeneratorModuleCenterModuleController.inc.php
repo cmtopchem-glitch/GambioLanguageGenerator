@@ -324,13 +324,18 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
                             continue;
                         }
 
-                        // Translate in batches
-                        $batchSize = 50;
+                        // Translate in batches (reduziert auf 20 für Stabilität)
+                        $batchSize = 20;
                         $chunks = array_chunk($flatEntries, $batchSize, true);
                         $translatedFlat = [];
 
                         foreach ($chunks as $index => $chunk) {
                             try {
+                                // Rate Limiting: 1 Sekunde Pause zwischen API-Calls (außer beim ersten)
+                                if ($index > 0) {
+                                    sleep(1);
+                                }
+
                                 error_log('GLG: Translating batch ' . ($index + 1) . '/' . count($chunks) . ' of ' . $sourceFile);
                                 $translated = $translator->translateBatch($chunk, $sourceLanguage, $targetLanguage, 'E-Commerce: ' . $sourceFile);
                                 $translatedFlat = array_merge($translatedFlat, $translated);
