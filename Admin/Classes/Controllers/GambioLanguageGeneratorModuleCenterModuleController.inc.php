@@ -338,6 +338,14 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
                                 }
 
                                 error_log('GLG: Translating batch ' . ($index + 1) . '/' . count($chunks) . ' of ' . $sourceFile);
+
+                                // Update Progress mit Batch-Info
+                                $batchInfo = 'Batch ' . ($index + 1) . '/' . count($chunks);
+                                $this->_updateProgress([
+                                    'current_file' => $sourceFile . ' (' . $batchInfo . ')',
+                                    'message' => "Übersetze $sourceFile nach $targetLanguage... $batchInfo"
+                                ]);
+
                                 $translated = $translator->translateBatch($chunk, $sourceLanguage, $targetLanguage, 'E-Commerce: ' . $sourceFile);
                                 $translatedFlat = array_merge($translatedFlat, $translated);
                             } catch (Exception $e) {
