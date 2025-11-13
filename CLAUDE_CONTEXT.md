@@ -1,90 +1,133 @@
 # Claude Code - Aktueller Arbeitsstand
 
-**Datum:** 2025-11-12 19:55 Uhr
-**Letzter Commit:** b0615f4 - FIX: Standard-Dateien kopieren & Progress-System Routing
+**Datum:** 2025-11-13 (Session fortgesetzt)
+**Letzter Commit:** 94c7afc - DEBUG: Erweitert OpenAI API Error-Handling & Logging
 **GitHub:** https://github.com/cmtopchem-glitch/GambioLanguageGenerator
+**Branch:** claude/gambio-language-generator-011CV4hTchAi6UmAhuQm88sk
 
 ---
 
-## ⚠️ Aktueller Status - IN ENTWICKLUNG (NICHT PRODUKTIV)
+## ⚠️ Aktueller Status - DEBUGGING PHASE
 
-### Was funktioniert
+### Was funktioniert ✅
 - ✅ ModuleCenter Integration mit Smarty-Templates
 - ✅ UI mit Bootstrap-Tabs (Sprachen generieren, Vergleichen, Einstellungen)
 - ✅ API-Settings speichern (OpenAI Key, Provider, Model)
+- ✅ **System Prompt editierbar** in Einstellungen (NEU seit 460996f)
 - ✅ Automatische Verzeichnis-Erstellung mit korrekten Berechtigungen (0775)
 - ✅ Standard-Dateien werden kopiert (flag.png, icon.gif, init.inc.php, admin/*)
 - ✅ 23+ Sprachen unterstützt
+- ✅ **Progress-Anzeige funktioniert** (Session-Lock gelöst seit 8bca953)
+- ✅ **Quellsprache-Filter funktioniert** (korrekte SQL-Filterung seit 34022e0)
 - ✅ Detailliertes Logging via error_log()
+- ✅ **Rate Limiting** zwischen API-Calls (1 Sekunde Pause seit 6c2b955)
+- ✅ **Erweiterte Error-Handling** mit cURL Timeout-Detection (seit 94c7afc)
 
-### ❌ Was NICHT funktioniert
-- ❌ **Progress-Anzeige:** AJAX Polling funktioniert nicht (Session-Lock Problem)
-- ❌ **Übersetzung startet nicht:** Hängt beim Bootstrap (application_top.php)
-- ❌ **PHP-FPM Worker hängen:** Bei langen Requests/Tests
-- ❌ **Mail-Templates kopieren:** copyDirectoryRecursive() temporär deaktiviert (Timeout)
-- ❌ **Stop-Button:** Erscheint nicht (weil Progress nicht funktioniert)
+### ❌ Was noch NICHT funktioniert
+- ❌ **PHP-FPM Worker hängt bei OpenAI API Call** - Erste Datei wird übersetzt, dann Stillstand
+- ⚠️ **Ursache unbekannt** - Debugging läuft mit erweiterten Logs
 
-### Kritische Probleme (2025-11-12)
+### Gelöste Probleme ✅
 
-#### Problem 1: Session-Lock verhindert Progress-Polling
+#### Problem 1: Session-Lock verhindert Progress-Polling ✅ GELÖST
 **Symptom:** Browser zeigt "Starte Übersetzung..." aber keine Progress-Updates
 
-**Ursache:**
-- `actionGenerate()` macht einen Long-Running AJAX Request
-- Session ist während des gesamten Requests gelockt
-- `actionGetProgress()` kann Session nicht lesen (blockiert)
+**Lösung (Commit 8bca953):**
+- POST-Daten VOR `session_write_close()` auslesen und in Variablen speichern
+- `session_write_close()` direkt nach Initialisierung aufrufen
+- Alle Session-Updates mit `_updateProgress()` Helper-Methode
+- Helper macht: `session_start()` → Update → `session_write_close()`
 
-**Versuchte Lösung:**
-- `session_write_close()` nach Progress-Init → POST-Daten nicht mehr lesbar
-
-**TODO:**
-- Alle `$_SESSION['glg_progress']` Updates mit `session_start()` / `session_write_close()` wrappen
-- ODER: Background-Job für Übersetzungen (beste Lösung)
-
-#### Problem 2: Übersetzung startet nie
-**Symptom:** Keine Dateien werden in `/lang/czech/` erstellt
-
-**Ursache (vermutet):**
-- `copyDirectoryRecursive()` hängt bei Mail-Templates
-- Oder: Gambio Bootstrap (application_top.php) hat Probleme
-
-**Aktueller Workaround:**
-- Mail-Templates kopieren deaktiviert (Zeile 436-447 in GLGFileWriter.php)
-
-#### Problem 3: PHP-FPM Worker hängen
-**Symptom:** Server wird langsam, Admin nicht erreichbar
+#### Problem 2: Falsche Quellsprache wird gelesen ✅ GELÖST
+**Symptom:** Trotz Auswahl "german" wurden "english/..." und "french/..." Dateien übersetzt
 
 **Ursache:**
-- Test-Scripts mit Gambio-Bootstrap hängen endlos
-- PHP Worker gehen nicht in Timeout
+- Datenbank `language_phrases_cache` kann für language_id=2 (deutsch) auch `source="english/..."` enthalten
+- GLGReader filterte nur nach language_id, nicht nach source-Pfad
 
-**Lösung:**
-```bash
-sudo systemctl restart php8.2-fpm
+**Lösung (Commit 34022e0):**
+- SQL-Queries erweitert mit Source-Filter:
+  - Core Files: `AND source LIKE '$language/%'`
+  - GXModules: `AND source LIKE '%/$language/%'`
+- Siehe GLGReader.php Zeile 67 und 109
+
+#### Problem 3: System Prompt nicht sichtbar ✅ GELÖST
+**Symptom:** System Prompt konnte nicht angesehen oder editiert werden
+
+**Lösung (Commit 460996f):**
+- Textarea in Einstellungen-Tab hinzugefügt (module_content.html Zeile 269-283)
+- System Prompt in Datenbank speichern (Controller Zeile 107, 112, 127)
+- Variable-Replacement: {{sourceLanguageName}}, {{targetLanguageName}}, {{context}}
+- GLGTranslator lädt Prompt aus Settings (Zeile 26, 65-68)
+
+### Aktuelles Problem - IN DEBUGGING 🔍
+
+#### Problem: PHP-FPM Worker hängt bei OpenAI API Call
+**Symptom:**
+- Erste Datei (honeygrid.lang.inc.php) wird erfolgreich übersetzt
+- Danach stoppt Prozess komplett - keine weiteren Logs
+- Worker antwortet nicht mehr, keine Timeouts
+- Nach 6+ Stunden immer noch keine Reaktion
+
+**Bisher versucht:**
+1. ✅ Batch-Größe von 50 auf 20 reduziert (Commit 6c2b955)
+2. ✅ Rate Limiting: 1 Sekunde Pause zwischen API-Calls (Commit 6c2b955)
+3. ✅ Erweiterte Error-Logs + cURL Timeout Detection (Commit 94c7afc)
+
+**Erwartete Debug-Ausgabe im Log:**
+```
+GLGTranslator: Translating from 'german' (Deutsch) to 'polish' (Polski)
+GLGTranslator: Context: german/..., Entries count: X
+GLGTranslator: Using system prompt (first 100 chars): Du bist ein...
+GLGTranslator: Sending request to OpenAI API...
+GLGTranslator: Received response from OpenAI (HTTP 200, 2.5s)  ← DIESES LOG FEHLT!
+GLGTranslator: Successfully translated X entries
 ```
 
-### Wichtige Dateien
-- **Controller:** `Admin/Classes/Controllers/GambioLanguageGeneratorModuleCenterModuleController.inc.php` (650 Zeilen)
-  - Zeile 28-35: Action-Routing für getProgress/stop hinzugefügt
-  - Zeile 157-398: actionGenerate() - Haupt-Übersetzungs-Logik
-  - Zeile 400-427: actionGetProgress() & actionStop() - AJAX Endpoints
-  - Zeile 602-611: _updateProgress() Helper (noch nicht verwendet)
+**Mögliche Ursachen:**
+- cURL hängt ohne Timeout-Exception zu werfen
+- OpenAI API antwortet nicht / sehr langsam
+- PHP-FPM Worker crash nach erstem API-Call
+- Netzwerk-Problem zwischen Server und OpenAI
 
-- **Template:** `Admin/Templates/module_content.html` (Smarty mit Tabs, Progress, Stop-Button)
+**Nächster Schritt:**
+- Code deployen und Test mit Live-Log-Monitoring: `tail -f /var/log/php8.2-fpm/error.log | grep GLG`
+- Wenn "Sending request..." erscheint aber KEIN "Received response..." → cURL hängt
+- Wenn cURL Error #28 → Connection Timeout
+- Wenn HTTP 429 → Rate Limiting von OpenAI
+
+### Wichtige Dateien & Änderungen
+
+- **Controller:** `Admin/Classes/Controllers/GambioLanguageGeneratorModuleCenterModuleController.inc.php`
+  - Zeile 180: `session_write_close()` nach Init (8bca953)
+  - Zeile 328: Batch-Größe auf 20 reduziert (6c2b955)
+  - Zeile 334-337: Rate Limiting mit sleep(1) (6c2b955)
+  - Zeile 602-611: `_updateProgress()` Helper für Session-Updates
+  - Zeile 54, 107, 112, 127: System Prompt laden/speichern (460996f)
+
+- **Template:** `Admin/Templates/module_content.html`
+  - Zeile 269-283: System Prompt Textarea mit Variablen-Hilfe (460996f)
   - Zeile 345-374: Progress-Polling JavaScript (alle 500ms)
   - Zeile 438-499: Form Submit Handler mit AJAX
 
-- **GLGFileWriter.php:** `includes/GLGFileWriter.php`
-  - Zeile 361-454: copyLanguageDefaults() - Kopiert Standard-Dateien
-  - Zeile 435-447: copyDirectoryRecursive() für Mail-Templates (DEAKTIVIERT)
-  - Zeile 529-573: copyDirectoryRecursive() Methode
+- **GLGReader:** `includes/GLGReader.php`
+  - Zeile 67: Core Files Filter: `AND source LIKE '$language/%'` (34022e0)
+  - Zeile 109: GXModules Filter: `AND source LIKE '%/$language/%'` (34022e0)
+  - Zeile 71, 113: Debug-Logs für Filterung
 
-- **Includes:**
-  - `GLGReader.php` - Liest Sprachdaten aus language_phrases_cache
-  - `GLGTranslator.php` - OpenAI/DeepL Integration
-  - `GLGFileWriter.php` - Schreibt Dateien mit korrekten Permissions
-  - `GLGCompare.php` - Sprachvergleich
-  - `GLGCore.php` - Core-Funktionalität
+- **GLGTranslator:** `includes/GLGTranslator.php`
+  - Zeile 18, 26: System Prompt aus Settings laden (460996f)
+  - Zeile 65-68: Variable-Replacement für Prompt (460996f)
+  - Zeile 87: Log vor API-Call: "Sending request..." (94c7afc)
+  - Zeile 96-97: cURL Timeouts (CURLOPT_TIMEOUT=120s, CONNECTTIMEOUT=30s) (94c7afc)
+  - Zeile 99-101: Dauer-Messung für API-Call (94c7afc)
+  - Zeile 104-110: cURL Error Detection mit errno/message (94c7afc)
+  - Zeile 115: Log nach API-Call: "Received response (HTTP X, Ys)" (94c7afc)
+  - Zeile 354-374: Default System Prompt Fallback-Methode (460996f)
+
+- **GLGFileWriter:** `includes/GLGFileWriter.php`
+  - Zeile 361-454: copyLanguageDefaults() - Kopiert Standard-Dateien
+  - Zeile 529-573: copyDirectoryRecursive() Methode
 
 ### Wichtige Befehle
 ```bash
@@ -135,17 +178,16 @@ Die Gambio-Datenbank kann für eine Sprache (z.B. deutsch, language_id=2) Eintr�
 ## 📋 Für den nächsten Entwickler
 
 ### Sofort-Aufgaben (Critical)
-1. **Session-Lock Problem lösen**
-   - Option A: `_updateProgress()` Helper an allen 23 Stellen verwenden
-   - Option B: Background-Job für Übersetzungen (empfohlen!)
+1. ✅ ~~**Session-Lock Problem lösen**~~ → GELÖST mit `_updateProgress()` Helper (8bca953)
 
-2. **Übersetzung zum Laufen bringen**
-   - Debug: Warum hängt Bootstrap?
-   - Test: Minimales Script ohne application_top.php
+2. ✅ ~~**Quellsprache-Filter implementieren**~~ → GELÖST mit source-Pfad Filterung (34022e0)
 
-3. **Mail-Templates kopieren fixen**
-   - copyDirectoryRecursive() optimieren (Chunks, Timeout handling)
-   - Oder: Asynchron mit AJAX Progress
+3. ✅ ~~**System Prompt editierbar machen**~~ → GELÖST mit UI + DB-Storage (460996f)
+
+4. **🔍 AKTUELL: PHP-FPM Worker Hang debuggen**
+   - Erweiterte Logs deployed (94c7afc, 6c2b955)
+   - Nächster Schritt: Code deployen und Test mit `tail -f` log monitoring
+   - Erwartung: Logs zeigen wo genau der Hang auftritt
 
 ### Mittelfristig (High Priority)
 4. **Background-Job implementieren**
