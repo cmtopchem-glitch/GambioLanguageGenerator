@@ -331,9 +331,10 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
 
                         foreach ($chunks as $index => $chunk) {
                             try {
-                                // Rate Limiting: 1 Sekunde Pause zwischen API-Calls (außer beim ersten)
+                                // Rate Limiting: 2 Sekunden Pause zwischen API-Calls (erhöht von 1s)
                                 if ($index > 0) {
-                                    sleep(1);
+                                    sleep(2);
+                                    error_log('GLG: Rate limiting pause (2s) after batch ' . $index);
                                 }
 
                                 error_log('GLG: Translating batch ' . ($index + 1) . '/' . count($chunks) . ' of ' . $sourceFile);

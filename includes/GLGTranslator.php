@@ -93,8 +93,9 @@ class GLGTranslator {
             'Content-Type: application/json',
             'Authorization: Bearer ' . $this->apiKey
         ]);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 120);           // Maximale Request-Zeit
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);            // Maximale Request-Zeit (reduziert auf 60s)
         curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);    // Connection-Timeout
+        curl_setopt($ch, CURLOPT_NOSIGNAL, true);        // WICHTIG für Timeouts in Multi-Threading!
 
         $startTime = microtime(true);
         $response = curl_exec($ch);
