@@ -1,31 +1,35 @@
 # Claude Code - Aktueller Arbeitsstand
 
-**Datum:** 2025-11-13 (Session fortgesetzt)
-**Letzter Commit:** 94c7afc - DEBUG: Erweitert OpenAI API Error-Handling & Logging
+**Datum:** 2025-11-13 08:30 Uhr
+**Letzter Commit:** a0baeb2 - UI: Batch-Progress in GUI anzeigen
 **GitHub:** https://github.com/cmtopchem-glitch/GambioLanguageGenerator
 **Branch:** claude/gambio-language-generator-011CV4hTchAi6UmAhuQm88sk
 
 ---
 
-## ⚠️ Aktueller Status - DEBUGGING PHASE
+## ✅ Aktueller Status - FIX DEPLOYED, WARTET AUF TEST
 
 ### Was funktioniert ✅
 - ✅ ModuleCenter Integration mit Smarty-Templates
 - ✅ UI mit Bootstrap-Tabs (Sprachen generieren, Vergleichen, Einstellungen)
 - ✅ API-Settings speichern (OpenAI Key, Provider, Model)
-- ✅ **System Prompt editierbar** in Einstellungen (NEU seit 460996f)
+- ✅ **System Prompt editierbar** in Einstellungen (seit 460996f)
 - ✅ Automatische Verzeichnis-Erstellung mit korrekten Berechtigungen (0775)
 - ✅ Standard-Dateien werden kopiert (flag.png, icon.gif, init.inc.php, admin/*)
 - ✅ 23+ Sprachen unterstützt
 - ✅ **Progress-Anzeige funktioniert** (Session-Lock gelöst seit 8bca953)
 - ✅ **Quellsprache-Filter funktioniert** (korrekte SQL-Filterung seit 34022e0)
+- ✅ **Batch-Progress in GUI** (zeigt "Batch X/Y" live, seit a0baeb2)
 - ✅ Detailliertes Logging via error_log()
-- ✅ **Rate Limiting** zwischen API-Calls (1 Sekunde Pause seit 6c2b955)
+- ✅ **Rate Limiting** zwischen API-Calls (2 Sekunden Pause seit 859c51c)
 - ✅ **Erweiterte Error-Handling** mit cURL Timeout-Detection (seit 94c7afc)
+- ✅ **CURLOPT_NOSIGNAL** für funktionierende Timeouts in PHP-FPM (seit 859c51c)
 
-### ❌ Was noch NICHT funktioniert
-- ❌ **PHP-FPM Worker hängt bei OpenAI API Call** - Erste Datei wird übersetzt, dann Stillstand
-- ⚠️ **Ursache unbekannt** - Debugging läuft mit erweiterten Logs
+### 🔧 Problem identifiziert & behoben!
+- ✅ **Root Cause:** `CURLOPT_NOSIGNAL` fehlte → Timeouts funktionierten nicht
+- ✅ **Fix deployed:** Commit 859c51c (Timeout-Fix) + a0baeb2 (UI-Verbesserung)
+- ⏳ **Status:** Wartet auf Deployment & Testing auf Live-Server
+- 📊 **Tests zeigten:** Worker hängt bei Batch 22/26 oder 26/26 ohne CURLOPT_NOSIGNAL
 
 ### Gelöste Probleme ✅
 
