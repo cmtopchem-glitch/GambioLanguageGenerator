@@ -62,45 +62,123 @@ class GLGCore {
     }
     
     /**
-     * Startet den Generierungsprozess
+     * Startet den Generierungsprozess (async via Job Queue)
      */
     public function startGeneration($params) {
         $processId = $params['processId'];
-        
-        // Prozess-Status initialisieren
-        $this->updateProcessStatus($processId, [
-            'status' => 'running',
-            'percent' => 0,
-            'statusText' => 'Starte Generierung...',
-            'details' => '',
-            'params' => $params
-        ]);
-        
+        $sourceLanguage = $params['sourceLanguage'];
+        $targetLanguages = $params['targetLanguages'];
+
         // Log-Eintrag erstellen
-        $this->addLog('generate', $params['sourceLanguage'], implode(',', $params['targetLanguages']), 'running', 'Generierung gestartet');
-        
-        // Starte eigentlichen Generierungsprozess
-        // In Produktivumgebung würde dies asynchron laufen
+        $this->addLog('generate', $sourceLanguage, implode(',', $targetLanguages), 'running', 'Generierung in Queue eingefügt');
+
+        // Erstelle Jobs für jede Datei und Zielsprache
+        $jobIds = [];
+
         try {
-            $this->executeGeneration($processId, $params);
-        } catch (Exception $e) {
+            // Lese Source-Daten
+            require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGReader.php');
+            $reader = new GLGReader();
+            $options = [
+                'includeCoreFiles' => $params['includeCoreFiles'] ?? true,
+                'includeGXModules' => $params['includeGXModules'] ?? true,
+                'selectedModules' => $params['selectedModules'] ?? []
+            ];
+
+            $sourceData = $reader->readLanguageData($sourceLanguage, $options);
+
+            if (empty($sourceData)) {
+                throw new Exception('Keine Quelldaten gefunden für ' . $sourceLanguage);
+            }
+
+            // Erstelle Job für jede Zielsprache + Source-Datei
+            foreach ($targetLanguages as $targetLanguage) {
+                foreach ($sourceData as $sourceFile => $fileData) {
+                    $jobId = $processId . '_' . count($jobIds);
+
+                    $this->createJob(
+                        $jobId,
+                        'translate_file',
+                        $sourceLanguage,
+                        $targetLanguage,
+                        $sourceFile,
+                        [
+                            'processId' => $processId,
+                            'includeCoreFiles' => $params['includeCoreFiles'] ?? true,
+                            'includeGXModules' => $params['includeGXModules'] ?? true,
+                            'selectedModules' => $params['selectedModules'] ?? []
+                        ]
+                    );
+
+                    $jobIds[] = $jobId;
+                }
+            }
+
+            // Speichere Process-Info
             $this->updateProcessStatus($processId, [
-                'status' => 'error',
+                'status' => 'queued',
                 'percent' => 0,
-                'statusText' => 'Fehler',
-                'details' => $e->getMessage()
+                'statusText' => 'In Queue: ' . count($jobIds) . ' Jobs warten...',
+                'details' => $sourceLanguage . ' → ' . implode(', ', $targetLanguages),
+                'params' => $params,
+                'jobCount' => count($jobIds),
+                'jobIds' => $jobIds
             ]);
-            
-            $this->addLog('generate', $params['sourceLanguage'], implode(',', $params['targetLanguages']), 'error', $e->getMessage());
+
+        } catch (Exception $e) {
+            $this->addLog('generate', $sourceLanguage, implode(',', $targetLanguages), 'error', $e->getMessage());
+
+            return [
+                'success' => false,
+                'processId' => $processId,
+                'message' => 'Fehler beim Erstellen der Jobs: ' . $e->getMessage()
+            ];
         }
-        
+
+        // Starte Background Worker im Hintergrund
+        $this->startBackgroundWorker();
+
         return [
             'success' => true,
             'processId' => $processId,
-            'message' => 'Generierung gestartet'
+            'message' => count($jobIds) . ' Jobs in Queue eingefügt',
+            'jobCount' => count($jobIds),
+            'jobIds' => $jobIds
         ];
     }
-    
+
+    /**
+     * Startet Background Worker im Hintergrund
+     */
+    private function startBackgroundWorker() {
+        $workerScript = DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/cli/worker.php';
+
+        if (!file_exists($workerScript)) {
+            error_log("[GLG] Worker script not found: $workerScript");
+            return false;
+        }
+
+        // Starte Worker asynchron ohne auf Completion zu warten
+        // Unix/Linux: php script.php > /dev/null 2>&1 &
+        // Windows: start php script.php
+
+        $php = exec('which php');
+        if (!$php) {
+            $php = 'php'; // Fallback
+        }
+
+        $command = "$php $workerScript > /dev/null 2>&1 &";
+
+        // Unter Windows wäre: pclose(popen("start /B php $workerScript", "r"));
+        // Aber wir sind auf Linux
+
+        exec($command, $output, $returnCode);
+
+        error_log("[GLG] Started background worker: $command (return code: $returnCode)");
+
+        return $returnCode === 0;
+    }
+
     /**
      * Führt die Generierung aus
      */
@@ -590,5 +668,159 @@ class GLGCore {
         }
         
         return $log;
+    }
+
+    /**
+     * ===== JOB-QUEUE MANAGEMENT =====
+     * Für asynchrone Verarbeitung im Background
+     */
+
+    /**
+     * Erstellt einen neuen Job in der Queue
+     */
+    public function createJob($jobId, $action, $sourceLanguage, $targetLanguage, $sourceFile, $params = []) {
+        $jobId = xtc_db_input($jobId);
+        $action = xtc_db_input($action);
+        $sourceLanguage = xtc_db_input($sourceLanguage);
+        $targetLanguage = xtc_db_input($targetLanguage);
+        $sourceFile = xtc_db_input($sourceFile);
+        $paramsJson = xtc_db_input(json_encode($params));
+
+        $query = "INSERT INTO `rz_glg_jobs`
+                  (`job_id`, `status`, `action`, `source_language`, `target_language`, `source_file`, `params`)
+                  VALUES ('$jobId', 'pending', '$action', '$sourceLanguage', '$targetLanguage', '$sourceFile', '$paramsJson')";
+
+        xtc_db_query($query);
+        return $jobId;
+    }
+
+    /**
+     * Holt nächsten verfügbaren Job (mit Locking)
+     */
+    public function getNextJob() {
+        $query = "SELECT * FROM `rz_glg_jobs`
+                  WHERE status = 'pending'
+                  AND (locked_until IS NULL OR locked_until < NOW())
+                  ORDER BY started_at ASC
+                  LIMIT 1 FOR UPDATE";
+
+        $result = xtc_db_query($query);
+        $job = xtc_db_fetch_array($result);
+
+        if ($job) {
+            // Lock Job für 5 Minuten
+            $lockTime = date('Y-m-d H:i:s', time() + 300);
+            $jobId = xtc_db_input($job['job_id']);
+            $pid = getmypid();
+
+            $query = "UPDATE `rz_glg_jobs`
+                      SET status = 'processing', worker_pid = $pid, locked_until = '$lockTime'
+                      WHERE job_id = '$jobId'";
+
+            xtc_db_query($query);
+        }
+
+        return $job;
+    }
+
+    /**
+     * Aktualisiert Job-Progress
+     */
+    public function updateJobProgress($jobId, $percent, $text = '') {
+        $jobId = xtc_db_input($jobId);
+        $percent = intval($percent);
+        $text = xtc_db_input($text);
+
+        $query = "UPDATE `rz_glg_jobs`
+                  SET progress_percent = $percent, progress_text = '$text'
+                  WHERE job_id = '$jobId'";
+
+        xtc_db_query($query);
+    }
+
+    /**
+     * Markiert Job als erfolgreich
+     */
+    public function completeJob($jobId) {
+        $jobId = xtc_db_input($jobId);
+        $completedAt = date('Y-m-d H:i:s');
+
+        $query = "UPDATE `rz_glg_jobs`
+                  SET status = 'success', progress_percent = 100, completed_at = '$completedAt', locked_until = NULL
+                  WHERE job_id = '$jobId'";
+
+        xtc_db_query($query);
+    }
+
+    /**
+     * Markiert Job als fehlgeschlagen
+     */
+    public function failJob($jobId, $errorMessage = '') {
+        $jobId = xtc_db_input($jobId);
+        $errorMessage = xtc_db_input($errorMessage);
+        $completedAt = date('Y-m-d H:i:s');
+
+        $query = "UPDATE `rz_glg_jobs`
+                  SET status = 'error', error_message = '$errorMessage', completed_at = '$completedAt', locked_until = NULL
+                  WHERE job_id = '$jobId'";
+
+        xtc_db_query($query);
+    }
+
+    /**
+     * Holt Job-Status
+     */
+    public function getJobStatus($jobId) {
+        $jobId = xtc_db_input($jobId);
+
+        $query = "SELECT * FROM `rz_glg_jobs` WHERE job_id = '$jobId'";
+        $result = xtc_db_query($query);
+        $job = xtc_db_fetch_array($result);
+
+        if (!$job) {
+            return null;
+        }
+
+        return [
+            'job_id' => $job['job_id'],
+            'status' => $job['status'],
+            'action' => $job['action'],
+            'source_language' => $job['source_language'],
+            'target_language' => $job['target_language'],
+            'source_file' => $job['source_file'],
+            'progress_percent' => intval($job['progress_percent']),
+            'progress_text' => $job['progress_text'],
+            'error_message' => $job['error_message'],
+            'started_at' => $job['started_at'],
+            'completed_at' => $job['completed_at']
+        ];
+    }
+
+    /**
+     * Gibt alle ausstehenden Jobs zurück
+     */
+    public function getPendingJobs() {
+        $query = "SELECT * FROM `rz_glg_jobs`
+                  WHERE status IN ('pending', 'processing')
+                  ORDER BY started_at ASC";
+
+        $result = xtc_db_query($query);
+        $jobs = [];
+
+        while ($job = xtc_db_fetch_array($result)) {
+            $jobs[] = [
+                'job_id' => $job['job_id'],
+                'status' => $job['status'],
+                'action' => $job['action'],
+                'source_language' => $job['source_language'],
+                'target_language' => $job['target_language'],
+                'source_file' => $job['source_file'],
+                'progress_percent' => intval($job['progress_percent']),
+                'progress_text' => $job['progress_text'],
+                'started_at' => $job['started_at']
+            ];
+        }
+
+        return $jobs;
     }
 }
