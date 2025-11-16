@@ -154,15 +154,7 @@ class GLGLanguageInitializer {
         try {
             $manager = new GLGLanguageManager();
 
-            // Prüfe ob Sprache schon existiert
-            if ($manager->languageExists($languageData['directory'])) {
-                return [
-                    'success' => false,
-                    'message' => 'Sprache existiert bereits: ' . $languageData['name']
-                ];
-            }
-
-            // Erstelle die Sprache
+            // Erstelle die Sprache (GLGLanguageManager kümmert sich um existierende Sprachen)
             $result = $manager->createLanguage([
                 'name' => $languageData['name'],
                 'code' => $isoCode,
