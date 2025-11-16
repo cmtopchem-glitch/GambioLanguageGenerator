@@ -33,6 +33,10 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
             error_log('GLG: Routing to actionStop()');
             return $this->actionStop();
         }
+        if ($action === 'createLanguages') {
+            error_log('GLG: Routing to actionCreateLanguages()');
+            return $this->actionCreateLanguages();
+        }
 
         $this->pageTitle = 'Gambio Language Generator';
 
@@ -672,6 +676,52 @@ class GambioLanguageGeneratorModuleCenterModuleController extends AbstractModule
             $_SESSION['glg_progress'][$key] = $value;
         }
         session_write_close();
+    }
+
+    /**
+     * Erstellt neue Sprachen
+     */
+    public function actionCreateLanguages() {
+        // Require GLGLanguageInitializer
+        require_once(dirname(__FILE__) . '/../GLGLanguageInitializer.php');
+
+        // Lese Anfrage
+        $languages = $this->_getPostData('languages');
+        if (empty($languages) || !is_array($languages)) {
+            $this->_jsonResponse(['success' => false, 'error' => 'Keine Sprachen angegeben']);
+            return;
+        }
+
+        $createdLanguages = [];
+        $errors = [];
+
+        foreach ($languages as $isoCode) {
+            // Sanitize
+            $isoCode = preg_replace('/[^a-z]/', '', strtolower($isoCode));
+
+            // Erstelle Sprache
+            $result = GLGLanguageInitializer::initializeLanguage($isoCode);
+
+            if ($result['success']) {
+                $createdLanguages[] = [
+                    'code' => $isoCode,
+                    'directory' => $result['languageDir'],
+                    'message' => $result['message']
+                ];
+            } else {
+                $errors[] = [
+                    'code' => $isoCode,
+                    'error' => $result['message']
+                ];
+            }
+        }
+
+        $this->_jsonResponse([
+            'success' => true,
+            'createdLanguages' => $createdLanguages,
+            'errors' => $errors,
+            'message' => count($createdLanguages) . ' Sprachen erstellt, ' . count($errors) . ' Fehler'
+        ]);
     }
 
     /**

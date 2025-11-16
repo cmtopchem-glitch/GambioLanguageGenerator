@@ -163,6 +163,14 @@ class GLGLanguageInitializer {
                 'flag' => $flagFile
             ]);
 
+            // Prüfe ob createLanguage erfolgreich war
+            if (!$result['success']) {
+                return [
+                    'success' => false,
+                    'message' => $result['message']
+                ];
+            }
+
             // Hole die languages_id
             $languageId = $result['language_id'] ?? null;
 

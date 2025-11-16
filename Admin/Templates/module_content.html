@@ -80,6 +80,9 @@
             <a href="#generate" onclick="glgSwitchTab('generate'); return false;"><i class="fa fa-language"></i> Sprachen generieren</a>
         </li>
         <li role="presentation">
+            <a href="#new-languages" onclick="glgSwitchTab('new-languages'); return false;"><i class="fa fa-plus"></i> Neue Sprachen</a>
+        </li>
+        <li role="presentation">
             <a href="#compare" onclick="glgSwitchTab('compare'); return false;"><i class="fa fa-search"></i> Vergleichen</a>
         </li>
         <li role="presentation">
@@ -138,6 +141,319 @@
                     <i class="fa fa-stop"></i> Übersetzung abbrechen
                 </button>
             </div>
+        </div>
+
+        <!-- New Languages Tab -->
+        <div role="tabpanel" class="tab-pane" id="new-languages">
+            <h3>Neue Sprachen erstellen</h3>
+            <p class="text-muted">Wählen Sie die gewünschten Sprachen aus und erstellen Sie neue Sprachverzeichnisse.</p>
+
+            <form id="glgNewLanguagesForm" class="form-horizontal">
+
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h4 class="panel-title">EU-Sprachen (26)</h4>
+                    </div>
+                    <div class="panel-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="de"> <img src="/admin/images/icons/flags/de.png" class="glg-flag-icon" alt=""> Deutsch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="en"> <img src="/admin/images/icons/flags/gb.png" class="glg-flag-icon" alt="">Englisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="fr"> <img src="/admin/images/icons/flags/fr.png" class="glg-flag-icon" alt="">Französisch</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="it"> <img src="/admin/images/icons/flags/it.png" class="glg-flag-icon" alt="">Italienisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="es"> <img src="/admin/images/icons/flags/es.png" class="glg-flag-icon" alt="">Spanisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="pl"> <img src="/admin/images/icons/flags/pl.png" class="glg-flag-icon" alt="">Polnisch</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="nl"> <img src="/admin/images/icons/flags/nl.png" class="glg-flag-icon" alt="">Niederländisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="sv"> <img src="/admin/images/icons/flags/se.png" class="glg-flag-icon" alt="">Schwedisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="da"> <img src="/admin/images/icons/flags/dk.png" class="glg-flag-icon" alt="">Dänisch</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="fi"> <img src="/admin/images/icons/flags/fi.png" class="glg-flag-icon" alt="">Finnisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="no"> <img src="/admin/images/icons/flags/no.png" class="glg-flag-icon" alt="">Norwegisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="pt"> <img src="/admin/images/icons/flags/pt.png" class="glg-flag-icon" alt="">Portugiesisch</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="el"> <img src="/admin/images/icons/flags/gr.png" class="glg-flag-icon" alt="">Griechisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="cs"> <img src="/admin/images/icons/flags/cz.png" class="glg-flag-icon" alt="">Tschechisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="hu"> <img src="/admin/images/icons/flags/hu.png" class="glg-flag-icon" alt="">Ungarisch</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="ro"> <img src="/admin/images/icons/flags/ro.png" class="glg-flag-icon" alt="">Rumänisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="bg"> <img src="/admin/images/icons/flags/bg.png" class="glg-flag-icon" alt="">Bulgarisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="hr"> <img src="/admin/images/icons/flags/hr.png" class="glg-flag-icon" alt="">Kroatisch</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="sl"> <img src="/admin/images/icons/flags/si.png" class="glg-flag-icon" alt="">Slowenisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="sk"> <img src="/admin/images/icons/flags/sk.png" class="glg-flag-icon" alt="">Slowakisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="lt"> <img src="/admin/images/icons/flags/lt.png" class="glg-flag-icon" alt="">Litauisch</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="lv"> <img src="/admin/images/icons/flags/lv.png" class="glg-flag-icon" alt="">Lettisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="et"> <img src="/admin/images/icons/flags/ee.png" class="glg-flag-icon" alt="">Estnisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="mt"> <img src="/admin/images/icons/flags/mt.png" class="glg-flag-icon" alt="">Maltesisch</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="lb"> <img src="/admin/images/icons/flags/lu.png" class="glg-flag-icon" alt="">Luxemburgisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="ga"> <img src="/admin/images/icons/flags/ie.png" class="glg-flag-icon" alt="">Irisch</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <h4 class="panel-title">Globale Sprachen (15)</h4>
+                    </div>
+                    <div class="panel-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="tr"> <img src="/admin/images/icons/flags/tr.png" class="glg-flag-icon" alt="">Türkisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="ru"> <img src="/admin/images/icons/flags/ru.png" class="glg-flag-icon" alt="">Russisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="uk"> <img src="/admin/images/icons/flags/ua.png" class="glg-flag-icon" alt="">Ukrainisch</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="ar"> <img src="/admin/images/icons/flags/sa.png" class="glg-flag-icon" alt="">Arabisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="he"> <img src="/admin/images/icons/flags/il.png" class="glg-flag-icon" alt="">Hebräisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="zh"> <img src="/admin/images/icons/flags/cn.png" class="glg-flag-icon" alt="">Chinesisch</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="ja"> <img src="/admin/images/icons/flags/jp.png" class="glg-flag-icon" alt="">Japanisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="ko"> <img src="/admin/images/icons/flags/kr.png" class="glg-flag-icon" alt="">Koreanisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="th"> <img src="/admin/images/icons/flags/th.png" class="glg-flag-icon" alt="">Thai</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="vi"> <img src="/admin/images/icons/flags/vn.png" class="glg-flag-icon" alt="">Vietnamesisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="id"> <img src="/admin/images/icons/flags/id.png" class="glg-flag-icon" alt="">Indonesisch</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="ms"> <img src="/admin/images/icons/flags/my.png" class="glg-flag-icon" alt="">Malaiisch</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="hi"> <img src="/admin/images/icons/flags/in.png" class="glg-flag-icon" alt="">Hindi</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="pa"> <img src="/admin/images/icons/flags/in.png" class="glg-flag-icon" alt="">Punjabi</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="checkbox">
+                                    <label><input type="checkbox" class="glg-language-checkbox" value="bn"> <img src="/admin/images/icons/flags/bd.png" class="glg-flag-icon" alt="">Bengalisch</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-sm-offset-2 col-sm-10">
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fa fa-plus"></i> Sprachen erstellen
+                        </button>
+                    </div>
+                </div>
+
+            </form>
+
+            <div id="glg-new-languages-messages"></div>
+
+            <style>
+                .glg-flag-icon {
+                    width: 20px;
+                    height: 15px;
+                    margin-right: 5px;
+                    vertical-align: middle;
+                    border-radius: 2px;
+                }
+
+                #glg-new-languages-form .checkbox label {
+                    padding-left: 30px;
+                }
+
+                .glg-new-languages-results {
+                    margin-top: 20px;
+                }
+
+                .glg-language-item {
+                    padding: 8px;
+                    margin-bottom: 8px;
+                    border-radius: 4px;
+                    display: flex;
+                    align-items: center;
+                }
+
+                .glg-language-item.success {
+                    background-color: #d4edda;
+                    border: 1px solid #c3e6cb;
+                    color: #155724;
+                }
+
+                .glg-language-item.error {
+                    background-color: #f8d7da;
+                    border: 1px solid #f5c6cb;
+                    color: #721c24;
+                }
+
+                .glg-language-item i {
+                    margin-right: 10px;
+                    font-size: 16px;
+                }
+            </style>
+
         </div>
 
         <!-- Compare Tab -->
@@ -571,6 +887,84 @@ jQuery(document).ready(function($) {
             },
             error: function(xhr, status, error) {
                 $('#glg-compare-messages').html('<div class="alert alert-danger"><strong>Fehler:</strong> ' + error + '</div>');
+            }
+        });
+    });
+
+    // New Languages Form Handler
+    $('#glgNewLanguagesForm').on('submit', function(e) {
+        e.preventDefault();
+
+        var selectedLanguages = [];
+        $('.glg-language-checkbox:checked').each(function() {
+            selectedLanguages.push($(this).val());
+        });
+
+        if (selectedLanguages.length === 0) {
+            alert('Bitte wählen Sie mindestens eine Sprache aus');
+            return;
+        }
+
+        $('#glg-new-languages-messages').html('<div class="alert alert-info"><i class="fa fa-spinner fa-spin"></i> Erstelle Sprachen...</div>');
+
+        $.ajax({
+            url: '/GXModules/REDOzone/GambioLanguageGenerator/ajax_create_languages.php',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                languages: selectedLanguages
+            },
+            success: function(response) {
+                var html = '';
+
+                if (response.success) {
+                    html += '<div class="alert alert-success"><strong>Erfolgreich!</strong> ' + response.message + '</div>';
+
+                    if (response.created && response.created.length > 0) {
+                        html += '<div class="glg-new-languages-results"><h4>Erstellte Sprachen:</h4>';
+                        $.each(response.created, function(i, lang) {
+                            html += '<div class="glg-language-item success">';
+                            html += '<i class="fa fa-check-circle"></i>';
+                            html += '<strong>' + lang.name + '</strong> (' + lang.code + ') - ' + lang.directory;
+                            html += '</div>';
+                        });
+                        html += '</div>';
+                    }
+
+                    if (response.errors && response.errors.length > 0) {
+                        html += '<div class="glg-new-languages-results"><h4>Fehler:</h4>';
+                        $.each(response.errors, function(i, error) {
+                            var errorMsg = typeof error === 'string' ? error : (error.error || error);
+                            html += '<div class="glg-language-item error">';
+                            html += '<i class="fa fa-exclamation-circle"></i>';
+                            html += errorMsg;
+                            html += '</div>';
+                        });
+                        html += '</div>';
+                    }
+                } else {
+                    html += '<div class="alert alert-danger"><strong>Fehler:</strong> ' + response.error + '</div>';
+                }
+
+                $('#glg-new-languages-messages').html(html);
+            },
+            error: function(xhr, status, error) {
+                console.log('Error creating languages:', xhr.status, xhr.responseText);
+                var errorMsg = 'Unbekannter Fehler';
+
+                if (xhr.status === 0) {
+                    errorMsg = 'Verbindungsfehler - Server antwortet nicht';
+                } else if (xhr.status === 403) {
+                    errorMsg = 'Zugriff verweigert (403)';
+                } else if (xhr.status === 404) {
+                    errorMsg = 'Seite nicht gefunden (404)';
+                } else if (xhr.status === 500) {
+                    errorMsg = 'Serverfehler (500)';
+                } else {
+                    errorMsg = 'HTTP ' + xhr.status + ': ' + error;
+                }
+
+                $('#glg-new-languages-messages').html('<div class="alert alert-danger"><strong>Fehler:</strong> ' + errorMsg + '</div>');
             }
         });
     });
