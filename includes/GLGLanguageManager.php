@@ -183,34 +183,68 @@ class GLGLanguageManager {
      * @return string Icon-Dateiname
      */
     private function generateLanguageIcon($directory, $countryCode) {
-        $iconDir = DIR_FS_CATALOG . 'lang/' . $directory . '/images/';
+        $basePath = DIR_FS_CATALOG;
         $iconFile = 'icon.gif';
-        $iconPath = $iconDir . $iconFile;
 
         // Prüfe ob Länderflagge existiert
         $flagSources = [
-            DIR_FS_CATALOG . "images/flags/$countryCode.gif",
-            DIR_FS_CATALOG . "images/flags/" . strtolower($countryCode) . ".gif",
-            DIR_FS_CATALOG . "admin/images/icons/flags/$countryCode.png",
-            DIR_FS_CATALOG . "admin/images/icons/flags/" . strtolower($countryCode) . ".png"
+            $basePath . "images/icons/flags/" . strtolower($countryCode) . ".png",
+            $basePath . "images/icons/flags/" . strtoupper($countryCode) . ".png",
+            $basePath . "images/flags/" . strtolower($countryCode) . ".gif",
+            $basePath . "images/flags/" . strtoupper($countryCode) . ".gif"
         ];
 
+        $flagFound = false;
         foreach ($flagSources as $flagSource) {
             if (file_exists($flagSource)) {
-                // Kopiere oder konvertiere Flagge
+                // Erstelle icon.gif in lang/{dir}/admin/images/
+                $adminIconDir = $basePath . 'lang/' . $directory . '/admin/images/';
+                if (!is_dir($adminIconDir)) {
+                    mkdir($adminIconDir, 0755, true);
+                }
+                $adminIconPath = $adminIconDir . $iconFile;
+
+                // Erstelle icon.gif in lang/{dir}/
+                $rootIconPath = $basePath . 'lang/' . $directory . '/' . $iconFile;
+
+                // Kopiere oder konvertiere Flagge zu beiden Orten
                 if (pathinfo($flagSource, PATHINFO_EXTENSION) === 'gif') {
-                    copy($flagSource, $iconPath);
+                    copy($flagSource, $adminIconPath);
+                    copy($flagSource, $rootIconPath);
                 } else {
                     // PNG zu GIF konvertieren
-                    $this->convertImageToGif($flagSource, $iconPath);
+                    $this->convertImageToGif($flagSource, $adminIconPath);
+                    $this->convertImageToGif($flagSource, $rootIconPath);
                 }
 
-                return $iconFile;
+                // Erstelle auch flag.png in root language directory
+                $flagPath = $basePath . 'lang/' . $directory . '/flag.png';
+                if (!file_exists($flagPath)) {
+                    if (pathinfo($flagSource, PATHINFO_EXTENSION) === 'png') {
+                        copy($flagSource, $flagPath);
+                    } else {
+                        // GIF zu PNG konvertieren (einfach kopieren, da keine GIFs existieren)
+                        copy($flagSource, $flagPath);
+                    }
+                }
+
+                $flagFound = true;
+                break;
             }
         }
 
-        // Wenn keine Flagge gefunden, erstelle Standard-Icon
-        $this->createDefaultIcon($iconPath, $countryCode);
+        // Wenn keine Flagge gefunden, erstelle Standard-Icons
+        if (!$flagFound) {
+            $adminIconDir = $basePath . 'lang/' . $directory . '/admin/images/';
+            if (!is_dir($adminIconDir)) {
+                mkdir($adminIconDir, 0755, true);
+            }
+            $adminIconPath = $adminIconDir . $iconFile;
+            $rootIconPath = $basePath . 'lang/' . $directory . '/' . $iconFile;
+
+            $this->createDefaultIcon($adminIconPath, $countryCode);
+            $this->createDefaultIcon($rootIconPath, $countryCode);
+        }
 
         return $iconFile;
     }
