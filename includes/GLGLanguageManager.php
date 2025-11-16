@@ -12,9 +12,56 @@
  */
 
 class GLGLanguageManager {
-    
+
     private $db;
     private $languagesTable = 'languages';
+
+    /**
+     * Locale-Mapping für alle unterstützten Sprachen
+     */
+    private $localeMap = [
+        'de' => 'de_DE.utf8, de_DE.UTF-8, de_DE@euro, de_DE, de-DE, de, ge, German',
+        'en' => 'en_US.utf8, en_US.UTF-8, en_EN@euro, en_US, en-US, en, English',
+        'fr' => 'fr_FR.utf8, fr_FR.UTF-8, fr_FR@euro, fr_FR, fr-FR, fr, Français',
+        'it' => 'it_IT.utf8, it_IT.UTF-8, it_IT@euro, it_IT, it-IT, it, Italiano',
+        'es' => 'es_ES.utf8, es_ES.UTF-8, es_ES@euro, es_ES, es-ES, es, Spanish',
+        'pl' => 'pl_PL.utf8, pl_PL.UTF-8, pl_PL, pl-PL, pl, Polish',
+        'nl' => 'nl_NL.utf8, nl_NL.UTF-8, nl_NL@euro, nl_NL, nl-NL, nl, Dutch',
+        'sv' => 'sv_SE.utf8, sv_SE.UTF-8, sv_SE, sv-SE, sv, Swedish',
+        'da' => 'da_DK.utf8, da_DK.UTF-8, da_DK, da-DK, da, Danish',
+        'fi' => 'fi_FI.utf8, fi_FI.UTF-8, fi_FI, fi-FI, fi, Finnish',
+        'no' => 'nb_NO.utf8, nb_NO.UTF-8, nb_NO, nb-NO, no, Norwegian',
+        'pt' => 'pt_PT.utf8, pt_PT.UTF-8, pt_PT, pt-PT, pt, Portuguese',
+        'el' => 'el_GR.utf8, el_GR.UTF-8, el_GR, el-GR, el, Greek',
+        'cs' => 'cs_CZ.utf8, cs_CZ.UTF-8, cs_CZ, cs-CZ, cs, Czech',
+        'hu' => 'hu_HU.utf8, hu_HU.UTF-8, hu_HU, hu-HU, hu, Hungarian',
+        'ro' => 'ro_RO.utf8, ro_RO.UTF-8, ro_RO, ro-RO, ro, Romanian',
+        'bg' => 'bg_BG.utf8, bg_BG.UTF-8, bg_BG, bg-BG, bg, Bulgarian',
+        'hr' => 'hr_HR.utf8, hr_HR.UTF-8, hr_HR, hr-HR, hr, Croatian',
+        'sl' => 'sl_SI.utf8, sl_SI.UTF-8, sl_SI, sl-SI, sl, Slovenian',
+        'sk' => 'sk_SK.utf8, sk_SK.UTF-8, sk_SK, sk-SK, sk, Slovak',
+        'lt' => 'lt_LT.utf8, lt_LT.UTF-8, lt_LT, lt-LT, lt, Lithuanian',
+        'lv' => 'lv_LV.utf8, lv_LV.UTF-8, lv_LV, lv-LV, lv, Latvian',
+        'et' => 'et_EE.utf8, et_EE.UTF-8, et_EE, et-EE, et, Estonian',
+        'mt' => 'mt_MT.utf8, mt_MT.UTF-8, mt_MT, mt-MT, mt, Maltese',
+        'lb' => 'lb_LU.utf8, lb_LU.UTF-8, lb_LU, lb-LU, lb, Luxembourgish',
+        'ga' => 'ga_IE.utf8, ga_IE.UTF-8, ga_IE, ga-IE, ga, Irish',
+        'tr' => 'tr_TR.utf8, tr_TR.UTF-8, tr_TR, tr-TR, tr, Turkish',
+        'ru' => 'ru_RU.utf8, ru_RU.UTF-8, ru_RU, ru-RU, ru, Russian',
+        'uk' => 'uk_UA.utf8, uk_UA.UTF-8, uk_UA, uk-UA, uk, Ukrainian',
+        'ar' => 'ar_SA.utf8, ar_SA.UTF-8, ar_SA, ar-SA, ar, Arabic',
+        'he' => 'he_IL.utf8, he_IL.UTF-8, he_IL, he-IL, he, Hebrew',
+        'zh' => 'zh_CN.utf8, zh_CN.UTF-8, zh_CN, zh-CN, zh, Chinese',
+        'ja' => 'ja_JP.utf8, ja_JP.UTF-8, ja_JP, ja-JP, ja, Japanese',
+        'ko' => 'ko_KR.utf8, ko_KR.UTF-8, ko_KR, ko-KR, ko, Korean',
+        'th' => 'th_TH.utf8, th_TH.UTF-8, th_TH, th-TH, th, Thai',
+        'vi' => 'vi_VN.utf8, vi_VN.UTF-8, vi_VN, vi-VN, vi, Vietnamese',
+        'id' => 'id_ID.utf8, id_ID.UTF-8, id_ID, id-ID, id, Indonesian',
+        'ms' => 'ms_MY.utf8, ms_MY.UTF-8, ms_MY, ms-MY, ms, Malay',
+        'hi' => 'hi_IN.utf8, hi_IN.UTF-8, hi_IN, hi-IN, hi, Hindi',
+        'pa' => 'pa_IN.utf8, pa_IN.UTF-8, pa_IN, pa-IN, pa, Punjabi',
+        'bn' => 'bn_BD.utf8, bn_BD.UTF-8, bn_BD, bn-BD, bn, Bengali',
+    ];
     
     public function __construct() {
         $this->db = $GLOBALS['db_link'];
@@ -139,7 +186,7 @@ class GLGLanguageManager {
         if ($languageId) {
 
             // Erstelle init.inc.php Dateien
-            $this->createInitFiles($directory, $languageId);
+            $this->createInitFiles($directory, $languageId, $code);
 
             // Erstelle index.html Dateien
             $this->createIndexFiles($directory);
@@ -386,32 +433,33 @@ class GLGLanguageManager {
     /**
      * Erstellt init.inc.php Dateien für die neue Sprache
      */
-    private function createInitFiles($directory, $languageId) {
+    private function createInitFiles($directory, $languageId, $languageCode = 'en') {
         $basePath = DIR_FS_CATALOG;
 
         // Create root init.inc.php
-        $rootInitContent = $this->getInitFileTemplate('root');
+        $rootInitContent = $this->getInitFileTemplate('root', $languageCode);
         $rootInitPath = $basePath . 'lang/' . $directory . '/init.inc.php';
-        if (!file_exists($rootInitPath)) {
-            file_put_contents($rootInitPath, $rootInitContent);
-            chmod($rootInitPath, 0644);
-        }
+        // Überschreibe existierende Datei, um sicherzustellen, dass richtige Locale gesetzt ist
+        file_put_contents($rootInitPath, $rootInitContent);
+        chmod($rootInitPath, 0644);
 
         // Create admin init.inc.php
-        $adminInitContent = $this->getInitFileTemplate('admin');
+        $adminInitContent = $this->getInitFileTemplate('admin', $languageCode);
         $adminInitPath = $basePath . 'lang/' . $directory . '/admin/init.inc.php';
-        if (!file_exists($adminInitPath)) {
-            file_put_contents($adminInitPath, $adminInitContent);
-            chmod($adminInitPath, 0644);
-        }
+        // Überschreibe existierende Datei, um sicherzustellen, dass richtige Locale gesetzt ist
+        file_put_contents($adminInitPath, $adminInitContent);
+        chmod($adminInitPath, 0644);
     }
 
     /**
-     * Gibt init.inc.php Template zurück
+     * Gibt init.inc.php Template zurück mit korrektem Locale für die Sprache
      */
-    private function getInitFileTemplate($type = 'root') {
+    private function getInitFileTemplate($type = 'root', $languageCode = 'en') {
+        // Hole Locale für die Sprache, Fallback zu Englisch
+        $locale = $this->localeMap[$languageCode] ?? $this->localeMap['en'];
+
         if ($type === 'admin') {
-            return '<?php
+            return "<?php
 /* --------------------------------------------------------------
    init.inc.php
    Gambio GmbH
@@ -421,31 +469,31 @@ class GLGLanguageManager {
    [http://www.gnu.org/licenses/gpl-2.0.html]
    -------------------------------------------------------------- */
 
-@setlocale(LC_TIME, \'en_US.utf8\', \'en_US.UTF-8\', \'en_US\', \'en\', \'English\');
+@setlocale(LC_TIME, '{$locale}');
 
-$db               = StaticGXCoreLoader::getDatabaseQueryBuilder();
-$languageSettings = $db->select()
-                       ->from(\'languages\')
-                       ->where(\'languages_id\', $_SESSION[\'languages_id\'])
+\$db               = StaticGXCoreLoader::getDatabaseQueryBuilder();
+\$languageSettings = \$db->select()
+                       ->from('languages')
+                       ->where('languages_id', \$_SESSION['languages_id'])
                        ->get()
                        ->row_array();
-if($languageSettings !== null)
+if(\$languageSettings !== null)
 {
-	define(\'DATE_FORMAT\', $languageSettings[\'date_format\']);
-	define(\'DATE_FORMAT_LONG\', $languageSettings[\'date_format_long\']);
-	define(\'DATE_FORMAT_SHORT\', $languageSettings[\'date_format_short\']);
-	define(\'DATE_TIME_FORMAT\', $languageSettings[\'date_time_format\']);
-	define(\'DOB_FORMAT_STRING\', $languageSettings[\'dob_format_string\']);
-	define(\'HTML_PARAMS\', $languageSettings[\'html_params\']);
-	define(\'LANGUAGE_CURRENCY\', $languageSettings[\'language_currency\']);
-	define(\'PHP_DATE_TIME_FORMAT\', $languageSettings[\'php_date_time_format\']);
+	define('DATE_FORMAT', \$languageSettings['date_format']);
+	define('DATE_FORMAT_LONG', \$languageSettings['date_format_long']);
+	define('DATE_FORMAT_SHORT', \$languageSettings['date_format_short']);
+	define('DATE_TIME_FORMAT', \$languageSettings['date_time_format']);
+	define('DOB_FORMAT_STRING', \$languageSettings['dob_format_string']);
+	define('HTML_PARAMS', \$languageSettings['html_params']);
+	define('LANGUAGE_CURRENCY', \$languageSettings['language_currency']);
+	define('PHP_DATE_TIME_FORMAT', \$languageSettings['php_date_time_format']);
 }
 
-$coo_lang_file_master->init_from_lang_file(\'admin_general\');
-$coo_lang_file_master->init_from_lang_file(\'gm_general\');
-';
+\$coo_lang_file_master->init_from_lang_file('admin_general');
+\$coo_lang_file_master->init_from_lang_file('gm_general');
+";
         } else {
-            return '<?php
+            return "<?php
 /* --------------------------------------------------------------
    init.inc.php 2022-07-27
    Gambio GmbH
@@ -455,35 +503,35 @@ $coo_lang_file_master->init_from_lang_file(\'gm_general\');
    [http://www.gnu.org/licenses/gpl-2.0.html]
    -------------------------------------------------------------- */
 
-@setlocale(LC_TIME, \'en_US.utf8\', \'en_US.UTF-8\', \'en_US\', \'en\', \'English\');
+@setlocale(LC_TIME, '{$locale}');
 
-$db               = StaticGXCoreLoader::getDatabaseQueryBuilder();
-$languageSettings = $db->select()
-                       ->from(\'languages\')
-                       ->where(\'languages_id\', $_SESSION[\'languages_id\'])
+\$db               = StaticGXCoreLoader::getDatabaseQueryBuilder();
+\$languageSettings = \$db->select()
+                       ->from('languages')
+                       ->where('languages_id', \$_SESSION['languages_id'])
                        ->get()
                        ->row_array();
-if($languageSettings !== null)
+if(\$languageSettings !== null)
 {
 
-    defined(\'DATE_FORMAT\') ?: define(\'DATE_FORMAT\', $languageSettings[\'date_format\']);
-	defined(\'DATE_FORMAT_LONG\') ?: define(\'DATE_FORMAT_LONG\', $languageSettings[\'date_format_long\']);
-	defined(\'DATE_FORMAT_SHORT\') ?: define(\'DATE_FORMAT_SHORT\', $languageSettings[\'date_format_short\']);
-	defined(\'DATE_TIME_FORMAT\') ?: define(\'DATE_TIME_FORMAT\', $languageSettings[\'date_time_format\']);
-	defined(\'DOB_FORMAT_STRING\') ?: define(\'DOB_FORMAT_STRING\', $languageSettings[\'dob_format_string\']);
-	defined(\'HTML_PARAMS\') ?: define(\'HTML_PARAMS\', $languageSettings[\'html_params\']);
-	defined(\'LANGUAGE_CURRENCY\') ?: define(\'LANGUAGE_CURRENCY\', $languageSettings[\'language_currency\']);
-    defined(\'PHP_DATE_TIME_FORMAT\') ?: define(\'PHP_DATE_TIME_FORMAT\', $languageSettings[\'php_date_time_format\']);
+    defined('DATE_FORMAT') ?: define('DATE_FORMAT', \$languageSettings['date_format']);
+	defined('DATE_FORMAT_LONG') ?: define('DATE_FORMAT_LONG', \$languageSettings['date_format_long']);
+	defined('DATE_FORMAT_SHORT') ?: define('DATE_FORMAT_SHORT', \$languageSettings['date_format_short']);
+	defined('DATE_TIME_FORMAT') ?: define('DATE_TIME_FORMAT', \$languageSettings['date_time_format']);
+	defined('DOB_FORMAT_STRING') ?: define('DOB_FORMAT_STRING', \$languageSettings['dob_format_string']);
+	defined('HTML_PARAMS') ?: define('HTML_PARAMS', \$languageSettings['html_params']);
+	defined('LANGUAGE_CURRENCY') ?: define('LANGUAGE_CURRENCY', \$languageSettings['language_currency']);
+    defined('PHP_DATE_TIME_FORMAT') ?: define('PHP_DATE_TIME_FORMAT', \$languageSettings['php_date_time_format']);
 }
 
-$coo_lang_file_master->init_from_lang_file(\'general\');
-$coo_lang_file_master->init_from_lang_file(\'gm_logger\');
-$coo_lang_file_master->init_from_lang_file(\'gm_shopping_cart\');
-$coo_lang_file_master->init_from_lang_file(\'gm_account_delete\');
-$coo_lang_file_master->init_from_lang_file(\'gm_price_offer\');
-$coo_lang_file_master->init_from_lang_file(\'gm_tell_a_friend\');
-$coo_lang_file_master->init_from_lang_file(\'gm_callback_service\');
-';
+\$coo_lang_file_master->init_from_lang_file('general');
+\$coo_lang_file_master->init_from_lang_file('gm_logger');
+\$coo_lang_file_master->init_from_lang_file('gm_shopping_cart');
+\$coo_lang_file_master->init_from_lang_file('gm_account_delete');
+\$coo_lang_file_master->init_from_lang_file('gm_price_offer');
+\$coo_lang_file_master->init_from_lang_file('gm_tell_a_friend');
+\$coo_lang_file_master->init_from_lang_file('gm_callback_service');
+";
         }
     }
 
