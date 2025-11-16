@@ -68,18 +68,75 @@ class GLGLanguageManager {
         // Generiere Sprachicon
         $iconPath = $this->generateLanguageIcon($directory, $countryCode);
         
-        // Füge Sprache in Datenbank ein
-        $query = "INSERT INTO {$this->languagesTable} 
-                  (name, code, image, directory, sort_order, language_charset) 
-                  VALUES 
-                  ('$name', '$code', '$iconPath', '$directory', $sortOrder, 'utf-8')";
-        
-        if (xtc_db_query($query)) {
-            $languageId = xtc_db_insert_id();
-            
+        // Füge Sprache in Datenbank ein - nur unkritische Felder
+        // Die kritischen Felder (date_format etc.) werden in ajax_create_languages.php mit xtc_db_query aktualisiert
+        if ($this->db && is_object($this->db)) {
+            $query = "INSERT INTO {$this->languagesTable} (name, code, image, directory, sort_order, language_charset, status, status_admin, date_format, date_format_long, date_format_short, date_time_format, dob_format_string, html_params, language_currency, php_date_time_format) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+            $stmt = $this->db->prepare($query);
+            if (!$stmt) {
+                return [
+                    'success' => false,
+                    'message' => 'Fehler beim Vorbereiten der Query: ' . $this->db->error
+                ];
+            }
+
+            $utf8 = 'utf-8';
+            $status = 0;
+            $statusAdmin = 1;
+            $dateFormat = 'd.m.Y';
+            $dateFormatLong = 'l, d. F Y';
+            $dateFormatShort = 'd.m.Y';
+            $dateTimeFormat = 'd.m.Y H:i:s';
+            $dobFormatString = 'tt.mm.jjjj';
+            $htmlParams = 'dir="ltr" lang="en"';
+            $languageCurrency = 'EUR';
+            $phpDateTimeFormat = 'd.m.Y H:i:s';
+
+            $stmt->bind_param(
+                'ssssissiisssisss',
+                $name, $code, $iconPath, $directory, $sortOrder,
+                $utf8, $status, $statusAdmin,
+                $dateFormat, $dateFormatLong, $dateFormatShort, $dateTimeFormat,
+                $dobFormatString, $htmlParams, $languageCurrency, $phpDateTimeFormat
+            );
+
+            if ($stmt->execute()) {
+                $languageId = $this->db->insert_id;
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Fehler beim Einfügen in Datenbank: ' . $stmt->error
+                ];
+            }
+            $stmt->close();
+        } else {
+            // Fallback zu xtc_db_query wenn mysqli nicht verfügbar
+            $query = "INSERT INTO {$this->languagesTable} (name, code, image, directory, sort_order, language_charset, status, status_admin) VALUES ('$name', '$code', '$iconPath', '$directory', $sortOrder, 'utf-8', 0, 1)";
+            if (xtc_db_query($query)) {
+                $languageId = xtc_db_insert_id();
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Fehler beim Einfügen in Datenbank'
+                ];
+            }
+        }
+
+        if ($languageId) {
+
+            // Erstelle init.inc.php Dateien
+            $this->createInitFiles($directory, $languageId);
+
+            // Erstelle index.html Dateien
+            $this->createIndexFiles($directory);
+
+            // Kopiere Mail-Templates von Referenz-Sprache
+            $this->copyMailTemplates(1, $languageId, $directory); // 1 = English als Standard
+
             // Kopiere Standard-Konfiguration
             $this->copyLanguageConfiguration($languageId);
-            
+
             return [
                 'success' => true,
                 'message' => "Sprache '$name' erfolgreich angelegt",
@@ -98,16 +155,18 @@ class GLGLanguageManager {
      */
     private function createLanguageDirectories($directory) {
         $basePath = DIR_FS_CATALOG;
-        
+
         $directories = [
             "lang/$directory",
             "lang/$directory/admin",
-            "lang/$directory/images",
+            "lang/$directory/admin/images",
             "lang/$directory/modules",
             "lang/$directory/original_sections",
-            "lang/$directory/sections"
+            "lang/$directory/original_mail_templates",
+            "lang/$directory/user_sections",
+            "lang/$directory/user_mail_templates"
         ];
-        
+
         foreach ($directories as $dir) {
             $fullPath = $basePath . $dir;
             if (!is_dir($fullPath)) {
@@ -118,16 +177,16 @@ class GLGLanguageManager {
     
     /**
      * Generiert Sprachicon aus Länderflagge
-     * 
+     *
      * @param string $directory Sprachverzeichnis
      * @param string $countryCode ISO-Ländercode (z.B. 'ES', 'FR')
-     * @return string Relativer Pfad zum Icon
+     * @return string Icon-Dateiname
      */
     private function generateLanguageIcon($directory, $countryCode) {
         $iconDir = DIR_FS_CATALOG . 'lang/' . $directory . '/images/';
         $iconFile = 'icon.gif';
         $iconPath = $iconDir . $iconFile;
-        
+
         // Prüfe ob Länderflagge existiert
         $flagSources = [
             DIR_FS_CATALOG . "images/flags/$countryCode.gif",
@@ -135,7 +194,7 @@ class GLGLanguageManager {
             DIR_FS_CATALOG . "admin/images/icons/flags/$countryCode.png",
             DIR_FS_CATALOG . "admin/images/icons/flags/" . strtolower($countryCode) . ".png"
         ];
-        
+
         foreach ($flagSources as $flagSource) {
             if (file_exists($flagSource)) {
                 // Kopiere oder konvertiere Flagge
@@ -145,15 +204,15 @@ class GLGLanguageManager {
                     // PNG zu GIF konvertieren
                     $this->convertImageToGif($flagSource, $iconPath);
                 }
-                
-                return $directory . '/images/' . $iconFile;
+
+                return $iconFile;
             }
         }
-        
+
         // Wenn keine Flagge gefunden, erstelle Standard-Icon
         $this->createDefaultIcon($iconPath, $countryCode);
-        
-        return $directory . '/images/' . $iconFile;
+
+        return $iconFile;
     }
     
     /**
@@ -276,7 +335,192 @@ class GLGLanguageManager {
             xtc_db_query($insertQuery);
         }
     }
-    
+
+    /**
+     * Erstellt init.inc.php Dateien für die neue Sprache
+     */
+    private function createInitFiles($directory, $languageId) {
+        $basePath = DIR_FS_CATALOG;
+
+        // Create root init.inc.php
+        $rootInitContent = $this->getInitFileTemplate('root');
+        $rootInitPath = $basePath . 'lang/' . $directory . '/init.inc.php';
+        if (!file_exists($rootInitPath)) {
+            file_put_contents($rootInitPath, $rootInitContent);
+            chmod($rootInitPath, 0644);
+        }
+
+        // Create admin init.inc.php
+        $adminInitContent = $this->getInitFileTemplate('admin');
+        $adminInitPath = $basePath . 'lang/' . $directory . '/admin/init.inc.php';
+        if (!file_exists($adminInitPath)) {
+            file_put_contents($adminInitPath, $adminInitContent);
+            chmod($adminInitPath, 0644);
+        }
+    }
+
+    /**
+     * Gibt init.inc.php Template zurück
+     */
+    private function getInitFileTemplate($type = 'root') {
+        if ($type === 'admin') {
+            return '<?php
+/* --------------------------------------------------------------
+   init.inc.php
+   Gambio GmbH
+   http://www.gambio.de
+   Copyright (c) 2018 Gambio GmbH
+   Released under the GNU General Public License (Version 2)
+   [http://www.gnu.org/licenses/gpl-2.0.html]
+   -------------------------------------------------------------- */
+
+@setlocale(LC_TIME, \'en_US.utf8\', \'en_US.UTF-8\', \'en_US\', \'en\', \'English\');
+
+$db               = StaticGXCoreLoader::getDatabaseQueryBuilder();
+$languageSettings = $db->select()
+                       ->from(\'languages\')
+                       ->where(\'languages_id\', $_SESSION[\'languages_id\'])
+                       ->get()
+                       ->row_array();
+if($languageSettings !== null)
+{
+	define(\'DATE_FORMAT\', $languageSettings[\'date_format\']);
+	define(\'DATE_FORMAT_LONG\', $languageSettings[\'date_format_long\']);
+	define(\'DATE_FORMAT_SHORT\', $languageSettings[\'date_format_short\']);
+	define(\'DATE_TIME_FORMAT\', $languageSettings[\'date_time_format\']);
+	define(\'DOB_FORMAT_STRING\', $languageSettings[\'dob_format_string\']);
+	define(\'HTML_PARAMS\', $languageSettings[\'html_params\']);
+	define(\'LANGUAGE_CURRENCY\', $languageSettings[\'language_currency\']);
+	define(\'PHP_DATE_TIME_FORMAT\', $languageSettings[\'php_date_time_format\']);
+}
+
+$coo_lang_file_master->init_from_lang_file(\'admin_general\');
+$coo_lang_file_master->init_from_lang_file(\'gm_general\');
+';
+        } else {
+            return '<?php
+/* --------------------------------------------------------------
+   init.inc.php 2022-07-27
+   Gambio GmbH
+   http://www.gambio.de
+   Copyright (c) 2022 Gambio GmbH
+   Released under the GNU General Public License (Version 2)
+   [http://www.gnu.org/licenses/gpl-2.0.html]
+   -------------------------------------------------------------- */
+
+@setlocale(LC_TIME, \'en_US.utf8\', \'en_US.UTF-8\', \'en_US\', \'en\', \'English\');
+
+$db               = StaticGXCoreLoader::getDatabaseQueryBuilder();
+$languageSettings = $db->select()
+                       ->from(\'languages\')
+                       ->where(\'languages_id\', $_SESSION[\'languages_id\'])
+                       ->get()
+                       ->row_array();
+if($languageSettings !== null)
+{
+
+    defined(\'DATE_FORMAT\') ?: define(\'DATE_FORMAT\', $languageSettings[\'date_format\']);
+	defined(\'DATE_FORMAT_LONG\') ?: define(\'DATE_FORMAT_LONG\', $languageSettings[\'date_format_long\']);
+	defined(\'DATE_FORMAT_SHORT\') ?: define(\'DATE_FORMAT_SHORT\', $languageSettings[\'date_format_short\']);
+	defined(\'DATE_TIME_FORMAT\') ?: define(\'DATE_TIME_FORMAT\', $languageSettings[\'date_time_format\']);
+	defined(\'DOB_FORMAT_STRING\') ?: define(\'DOB_FORMAT_STRING\', $languageSettings[\'dob_format_string\']);
+	defined(\'HTML_PARAMS\') ?: define(\'HTML_PARAMS\', $languageSettings[\'html_params\']);
+	defined(\'LANGUAGE_CURRENCY\') ?: define(\'LANGUAGE_CURRENCY\', $languageSettings[\'language_currency\']);
+    defined(\'PHP_DATE_TIME_FORMAT\') ?: define(\'PHP_DATE_TIME_FORMAT\', $languageSettings[\'php_date_time_format\']);
+}
+
+$coo_lang_file_master->init_from_lang_file(\'general\');
+$coo_lang_file_master->init_from_lang_file(\'gm_logger\');
+$coo_lang_file_master->init_from_lang_file(\'gm_shopping_cart\');
+$coo_lang_file_master->init_from_lang_file(\'gm_account_delete\');
+$coo_lang_file_master->init_from_lang_file(\'gm_price_offer\');
+$coo_lang_file_master->init_from_lang_file(\'gm_tell_a_friend\');
+$coo_lang_file_master->init_from_lang_file(\'gm_callback_service\');
+';
+        }
+    }
+
+    /**
+     * Kopiert Mail-Templates von einer anderen Sprache
+     */
+    private function copyMailTemplates($sourceLanguageId, $targetLanguageId, $targetDirectory) {
+        $basePath = DIR_FS_CATALOG;
+
+        // Hole Verzeichnis der Quellsprache
+        $query = "SELECT directory FROM {$this->languagesTable} WHERE languages_id = $sourceLanguageId";
+        $result = xtc_db_query($query);
+
+        if (!$row = xtc_db_fetch_array($result)) {
+            return; // Quellsprache nicht gefunden
+        }
+
+        $sourceDirectory = $row['directory'];
+
+        // Kopiere original_mail_templates
+        $sourceMailPath = $basePath . 'lang/' . $sourceDirectory . '/original_mail_templates';
+        $targetMailPath = $basePath . 'lang/' . $targetDirectory . '/original_mail_templates';
+
+        if (is_dir($sourceMailPath)) {
+            $this->copyDirectory($sourceMailPath, $targetMailPath);
+        }
+
+        // Kopiere user_mail_templates
+        $sourceUserMailPath = $basePath . 'lang/' . $sourceDirectory . '/user_mail_templates';
+        $targetUserMailPath = $basePath . 'lang/' . $targetDirectory . '/user_mail_templates';
+
+        if (is_dir($sourceUserMailPath)) {
+            $this->copyDirectory($sourceUserMailPath, $targetUserMailPath);
+        }
+    }
+
+    /**
+     * Kopiert ein komplettes Verzeichnis rekursiv
+     */
+    private function copyDirectory($source, $destination) {
+        if (!is_dir($destination)) {
+            mkdir($destination, 0755, true);
+        }
+
+        $dir = opendir($source);
+        while (false !== ($file = readdir($dir))) {
+            if ($file != '.' && $file != '..') {
+                $sourceFile = $source . '/' . $file;
+                $destFile = $destination . '/' . $file;
+
+                if (is_dir($sourceFile)) {
+                    $this->copyDirectory($sourceFile, $destFile);
+                } else {
+                    copy($sourceFile, $destFile);
+                }
+            }
+        }
+        closedir($dir);
+    }
+
+    /**
+     * Erstellt index.html Datei in Verzeichnissen
+     */
+    private function createIndexFiles($directory) {
+        $basePath = DIR_FS_CATALOG;
+        $indexContent = '';
+
+        $directories = [
+            "lang/$directory",
+            "lang/$directory/admin",
+            "lang/$directory/user_mail_templates",
+            "lang/$directory/user_sections",
+            "lang/$directory/original_sections",
+            "lang/$directory/original_mail_templates"
+        ];
+
+        foreach ($directories as $dir) {
+            $indexPath = $basePath . $dir . '/index.html';
+            if (!file_exists($indexPath)) {
+                file_put_contents($indexPath, $indexContent);
+            }
+        }
+    }
+
     /**
      * Gibt alle verfügbaren Sprachen zurück
      */
