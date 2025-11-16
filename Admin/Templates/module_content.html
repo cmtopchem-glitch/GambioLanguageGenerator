@@ -452,6 +452,31 @@
                     margin-right: 10px;
                     font-size: 16px;
                 }
+
+                /* Existing language indicators */
+                .glg-language-checkbox:disabled + label {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
+
+                .glg-language-checkbox:disabled + label .glg-existing-badge {
+                    display: inline-block;
+                }
+
+                .glg-existing-badge {
+                    display: none;
+                    background-color: #28a745;
+                    color: white;
+                    font-size: 11px;
+                    padding: 2px 6px;
+                    border-radius: 3px;
+                    margin-left: 8px;
+                    font-weight: bold;
+                }
+
+                .glg-language-checkbox:not(:disabled) + label .glg-existing-badge {
+                    display: none;
+                }
             </style>
 
         </div>
@@ -670,6 +695,42 @@ jQuery(document).ready(function($) {
 
     $('#glg-compare-source-language').on('change', updateCompareTargetLanguage);
     updateCompareTargetLanguage();
+
+    // Load and mark existing languages in "Neue Sprachen" tab
+    function loadExistingLanguages() {
+        $.ajax({
+            url: '/GXModules/REDOzone/GambioLanguageGenerator/ajax_get_existing_languages.php',
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success && response.existingLanguages) {
+                    var existingLanguages = response.existingLanguages;
+
+                    // Mark each existing language
+                    existingLanguages.forEach(function(langCode) {
+                        var checkbox = $('.glg-language-checkbox[value="' + langCode + '"]');
+                        if (checkbox.length) {
+                            // Disable the checkbox
+                            checkbox.prop('disabled', true);
+                            checkbox.prop('checked', false);
+
+                            // Add badge to the label
+                            var label = checkbox.closest('label');
+                            if (label.find('.glg-existing-badge').length === 0) {
+                                label.append(' <span class="glg-existing-badge">✓ Existiert</span>');
+                            }
+                        }
+                    });
+                }
+            },
+            error: function() {
+                console.log('Error loading existing languages');
+            }
+        });
+    }
+
+    // Load existing languages when page loads
+    loadExistingLanguages();
 
     // Progress Polling Variables
     var progressInterval = null;
