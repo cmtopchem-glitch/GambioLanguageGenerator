@@ -47,13 +47,16 @@ class GLGLanguageManager {
         $code = xtc_db_input($languageData['code']);
         $directory = xtc_db_input($languageData['directory']);
         $countryCode = xtc_db_input($languageData['country_code'] ?? strtoupper($code));
-        
+
         // Prüfe ob Sprache bereits existiert
+        $existingLanguage = null;
         if ($this->languageExists($directory)) {
-            return [
-                'success' => false,
-                'message' => "Sprache '$directory' existiert bereits"
-            ];
+            // Hole die existing language ID
+            $query = "SELECT languages_id FROM {$this->languagesTable} WHERE directory = '$directory'";
+            $result = xtc_db_query($query);
+            if ($row = xtc_db_fetch_array($result)) {
+                $existingLanguage = $row['languages_id'];
+            }
         }
         
         // Ermittle nächste sort_order
@@ -68,58 +71,68 @@ class GLGLanguageManager {
         // Generiere Sprachicon
         $iconPath = $this->generateLanguageIcon($directory, $countryCode);
         
-        // Füge Sprache in Datenbank ein - nur unkritische Felder
-        // Die kritischen Felder (date_format etc.) werden in ajax_create_languages.php mit xtc_db_query aktualisiert
-        if ($this->db && is_object($this->db)) {
-            $query = "INSERT INTO {$this->languagesTable} (name, code, image, directory, sort_order, language_charset, status, status_admin, date_format, date_format_long, date_format_short, date_time_format, dob_format_string, html_params, language_currency, php_date_time_format) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        // Wenn Sprache bereits existiert, nutze die existing ID und update die Files
+        // Wenn nicht, insert neue Sprache
+        $languageId = null;
 
-            $stmt = $this->db->prepare($query);
-            if (!$stmt) {
-                return [
-                    'success' => false,
-                    'message' => 'Fehler beim Vorbereiten der Query: ' . $this->db->error
-                ];
-            }
-
-            $utf8 = 'utf-8';
-            $status = 0;
-            $statusAdmin = 1;
-            $dateFormat = 'd.m.Y';
-            $dateFormatLong = 'l, d. F Y';
-            $dateFormatShort = 'd.m.Y';
-            $dateTimeFormat = 'd.m.Y H:i:s';
-            $dobFormatString = 'tt.mm.jjjj';
-            $htmlParams = 'dir="ltr" lang="en"';
-            $languageCurrency = 'EUR';
-            $phpDateTimeFormat = 'd.m.Y H:i:s';
-
-            $stmt->bind_param(
-                'ssssissiisssisss',
-                $name, $code, $iconPath, $directory, $sortOrder,
-                $utf8, $status, $statusAdmin,
-                $dateFormat, $dateFormatLong, $dateFormatShort, $dateTimeFormat,
-                $dobFormatString, $htmlParams, $languageCurrency, $phpDateTimeFormat
-            );
-
-            if ($stmt->execute()) {
-                $languageId = $this->db->insert_id;
-            } else {
-                return [
-                    'success' => false,
-                    'message' => 'Fehler beim Einfügen in Datenbank: ' . $stmt->error
-                ];
-            }
-            $stmt->close();
+        if ($existingLanguage) {
+            // Sprache existiert bereits - nutze die existing ID
+            $languageId = $existingLanguage;
+            // Optionally: update icon image path
+            xtc_db_query("UPDATE {$this->languagesTable} SET image='$iconPath' WHERE languages_id=$languageId");
         } else {
-            // Fallback zu xtc_db_query wenn mysqli nicht verfügbar
-            $query = "INSERT INTO {$this->languagesTable} (name, code, image, directory, sort_order, language_charset, status, status_admin) VALUES ('$name', '$code', '$iconPath', '$directory', $sortOrder, 'utf-8', 0, 1)";
-            if (xtc_db_query($query)) {
-                $languageId = xtc_db_insert_id();
+            // Neue Sprache - insert in Datenbank
+            if ($this->db && is_object($this->db)) {
+                $query = "INSERT INTO {$this->languagesTable} (name, code, image, directory, sort_order, language_charset, status, status_admin, date_format, date_format_long, date_format_short, date_time_format, dob_format_string, html_params, language_currency, php_date_time_format) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+                $stmt = $this->db->prepare($query);
+                if (!$stmt) {
+                    return [
+                        'success' => false,
+                        'message' => 'Fehler beim Vorbereiten der Query: ' . $this->db->error
+                    ];
+                }
+
+                $utf8 = 'utf-8';
+                $status = 0;
+                $statusAdmin = 1;
+                $dateFormat = 'd.m.Y';
+                $dateFormatLong = 'l, d. F Y';
+                $dateFormatShort = 'd.m.Y';
+                $dateTimeFormat = 'd.m.Y H:i:s';
+                $dobFormatString = 'tt.mm.jjjj';
+                $htmlParams = 'dir="ltr" lang="en"';
+                $languageCurrency = 'EUR';
+                $phpDateTimeFormat = 'd.m.Y H:i:s';
+
+                $stmt->bind_param(
+                    'ssssissiisssisss',
+                    $name, $code, $iconPath, $directory, $sortOrder,
+                    $utf8, $status, $statusAdmin,
+                    $dateFormat, $dateFormatLong, $dateFormatShort, $dateTimeFormat,
+                    $dobFormatString, $htmlParams, $languageCurrency, $phpDateTimeFormat
+                );
+
+                if ($stmt->execute()) {
+                    $languageId = $this->db->insert_id;
+                } else {
+                    return [
+                        'success' => false,
+                        'message' => 'Fehler beim Einfügen in Datenbank: ' . $stmt->error
+                    ];
+                }
+                $stmt->close();
             } else {
-                return [
-                    'success' => false,
-                    'message' => 'Fehler beim Einfügen in Datenbank'
-                ];
+                // Fallback zu xtc_db_query wenn mysqli nicht verfügbar
+                $query = "INSERT INTO {$this->languagesTable} (name, code, image, directory, sort_order, language_charset, status, status_admin) VALUES ('$name', '$code', '$iconPath', '$directory', $sortOrder, 'utf-8', 0, 1)";
+                if (xtc_db_query($query)) {
+                    $languageId = xtc_db_insert_id();
+                } else {
+                    return [
+                        'success' => false,
+                        'message' => 'Fehler beim Einfügen in Datenbank'
+                    ];
+                }
             }
         }
 
