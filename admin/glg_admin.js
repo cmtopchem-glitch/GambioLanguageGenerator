@@ -17,11 +17,8 @@ $(document).ready(function() {
     console.log('GLG Admin JS loaded!');
     console.log('GLG Config:', window.GLG);
 
-    // Test: Bootstrap Tabs manuell aktivieren
-    $('a[data-toggle="tab"]').on('click', function (e) {
-        e.preventDefault();
-        $(this).tab('show');
-    });
+    // Bootstrap Tabs - verwende natives Bootstrap-Handling (kein preventDefault notwendig)
+    // Bootstrap kümmert sich automatisch um Tabs wenn data-toggle="tab" gesetzt ist
 
     // Module-Liste ein-/ausblenden
     $('#includeGXModules').change(function() {
@@ -36,7 +33,7 @@ $(document).ready(function() {
     // Generate Form Submit
     $('#generateForm').submit(function(e) {
         e.preventDefault();
-        
+
         var sourceLanguage = $('#sourceLanguage').val();
         var targetLanguages = $('input[name="targetLanguages[]"]:checked').map(function() {
             return $(this).val();
@@ -69,7 +66,7 @@ $(document).ready(function() {
     // Settings Form Submit
     $('#settingsForm').submit(function(e) {
         e.preventDefault();
-        
+
         var formData = $(this).serializeArray();
         formData.push({name: 'action', value: 'saveSettings'});
 
@@ -159,6 +156,119 @@ $(document).ready(function() {
         }
     });
 
+    // Sprache erstellen - Form Handler
+    $('#createLanguageForm').submit(function(e) {
+        e.preventDefault();
+
+        var formData = $(this).serializeArray();
+        formData.push({name: 'action', value: 'createLanguage'});
+
+        $.ajax({
+            url: window.GLG.controllerUrl,
+            type: 'POST',
+            data: formData,
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    showMessage('languagesMessages', 'success', response.message);
+                    $('#createLanguageForm')[0].reset();
+
+                    // Reload Sprach-Selects
+                    setTimeout(function() {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showMessage('languagesMessages', 'danger', response.message);
+                }
+            },
+            error: function() {
+                showMessage('languagesMessages', 'danger', 'Fehler beim Anlegen der Sprache');
+            }
+        });
+    });
+
+    // Sprachen vergleichen - Form Handler
+    $('#compareForm').submit(function(e) {
+        e.preventDefault();
+
+        var sourceLanguage = $('#compareSourceLanguage').val();
+        var targetLanguage = $('#compareTargetLanguage').val();
+
+        if (!sourceLanguage || !targetLanguage) {
+            showMessage('compareMessages', 'warning', 'Bitte beide Sprachen auswählen');
+            return;
+        }
+
+        if (sourceLanguage === targetLanguage) {
+            showMessage('compareMessages', 'warning', 'Quell- und Zielsprache müssen unterschiedlich sein');
+            return;
+        }
+
+        var formData = {
+            action: 'compareLanguages',
+            sourceLanguage: sourceLanguage,
+            targetLanguage: targetLanguage,
+            includeCoreFiles: $('#compareIncludeCoreFiles').is(':checked'),
+            includeGXModules: $('#compareIncludeGXModules').is(':checked')
+        };
+
+        $('#compareProgress').show();
+        $('#compareResults').hide();
+
+        $.ajax({
+            url: window.GLG.controllerUrl,
+            type: 'POST',
+            data: formData,
+            dataType: 'json',
+            success: function(response) {
+                $('#compareProgress').hide();
+
+                if (response.success) {
+                    displayComparisonResults(response.comparison);
+                } else {
+                    showMessage('compareMessages', 'danger', 'Fehler beim Vergleich');
+                }
+            },
+            error: function() {
+                $('#compareProgress').hide();
+                showMessage('compareMessages', 'danger', 'Fehler beim Vergleich');
+            }
+        });
+    });
+
+    // Report anzeigen - Button Handler
+    $(document).on('click', '#viewReportBtn', function() {
+        var formData = {
+            action: 'getComparisonReport',
+            sourceLanguage: $('#compareSourceLanguage').val(),
+            targetLanguage: $('#compareTargetLanguage').val(),
+            includeCoreFiles: $('#compareIncludeCoreFiles').is(':checked'),
+            includeGXModules: $('#compareIncludeGXModules').is(':checked')
+        };
+
+        $.ajax({
+            url: window.GLG.controllerUrl,
+            type: 'POST',
+            data: formData,
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    window.open(response.report_url, '_blank');
+                }
+            }
+        });
+    });
+
+    // Nur fehlende übersetzen - Button Handler
+    $(document).on('click', '#updateMissingBtn', function() {
+        if (confirm('Nur die fehlenden ' + window.currentComparison.missing_entries + ' Einträge übersetzen?')) {
+            // TODO: Implementiere selective Update
+            showMessage('compareMessages', 'info', 'Funktion wird implementiert...');
+        }
+    });
+
+    // Language Suggestion Click Handler wird in loadLanguageSuggestions() gesetzt
+
     // Load initial data
     loadLastUpdate();
     loadLog();
@@ -202,90 +312,6 @@ function loadLanguageSuggestions() {
         }
     });
 }
-
-/**
- * Sprache erstellen
- */
-$('#createLanguageForm').submit(function(e) {
-    e.preventDefault();
-    
-    var formData = $(this).serializeArray();
-    formData.push({name: 'action', value: 'createLanguage'});
-
-    $.ajax({
-        url: window.GLG.controllerUrl,
-        type: 'POST',
-        data: formData,
-        dataType: 'json',
-        success: function(response) {
-            if (response.success) {
-                showMessage('languagesMessages', 'success', response.message);
-                $('#createLanguageForm')[0].reset();
-                
-                // Reload Sprach-Selects
-                setTimeout(function() {
-                    location.reload();
-                }, 2000);
-            } else {
-                showMessage('languagesMessages', 'danger', response.message);
-            }
-        },
-        error: function() {
-            showMessage('languagesMessages', 'danger', 'Fehler beim Anlegen der Sprache');
-        }
-    });
-});
-
-/**
- * Sprachen vergleichen
- */
-$('#compareForm').submit(function(e) {
-    e.preventDefault();
-    
-    var sourceLanguage = $('#compareSourceLanguage').val();
-    var targetLanguage = $('#compareTargetLanguage').val();
-
-    if (!sourceLanguage || !targetLanguage) {
-        showMessage('compareMessages', 'warning', 'Bitte beide Sprachen auswählen');
-        return;
-    }
-
-    if (sourceLanguage === targetLanguage) {
-        showMessage('compareMessages', 'warning', 'Quell- und Zielsprache müssen unterschiedlich sein');
-        return;
-    }
-
-    var formData = {
-        action: 'compareLanguages',
-        sourceLanguage: sourceLanguage,
-        targetLanguage: targetLanguage,
-        includeCoreFiles: $('#compareIncludeCoreFiles').is(':checked'),
-        includeGXModules: $('#compareIncludeGXModules').is(':checked')
-    };
-
-    $('#compareProgress').show();
-    $('#compareResults').hide();
-
-    $.ajax({
-        url: window.GLG.controllerUrl,
-        type: 'POST',
-        data: formData,
-        dataType: 'json',
-        success: function(response) {
-            $('#compareProgress').hide();
-            
-            if (response.success) {
-                displayComparisonResults(response.comparison);
-            } else {
-                showMessage('compareMessages', 'danger', 'Fehler beim Vergleich');
-            }
-        },
-        error: function() {
-            $('#compareProgress').hide();
-            showMessage('compareMessages', 'danger', 'Fehler beim Vergleich');
-        }
-    });
-});
 
 /**
  * Zeigt Vergleichsergebnisse
@@ -338,39 +364,12 @@ function displayComparisonResults(comparison) {
 }
 
 /**
- * Report anzeigen
+ * Report anzeigen - Handler ist jetzt in document.ready()
  */
-$('#viewReportBtn').click(function() {
-    var formData = {
-        action: 'getComparisonReport',
-        sourceLanguage: $('#compareSourceLanguage').val(),
-        targetLanguage: $('#compareTargetLanguage').val(),
-        includeCoreFiles: $('#compareIncludeCoreFiles').is(':checked'),
-        includeGXModules: $('#compareIncludeGXModules').is(':checked')
-    };
-
-    $.ajax({
-        url: window.GLG.controllerUrl,
-        type: 'POST',
-        data: formData,
-        dataType: 'json',
-        success: function(response) {
-            if (response.success) {
-                window.open(response.report_url, '_blank');
-            }
-        }
-    });
-});
 
 /**
- * Nur fehlende übersetzen
+ * Nur fehlende übersetzen - Handler ist jetzt in document.ready()
  */
-$('#updateMissingBtn').click(function() {
-    if (confirm('Nur die fehlenden ' + window.currentComparison.missing_entries + ' Einträge übersetzen?')) {
-        // TODO: Implementiere selective Update
-        showMessage('compareMessages', 'info', 'Funktion wird implementiert...');
-    }
-});
 
 /**
  * Lädt die Liste der verfügbaren Module
