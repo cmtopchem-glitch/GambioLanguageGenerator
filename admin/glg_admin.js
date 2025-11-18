@@ -1,12 +1,21 @@
 /**
  * Gambio Language Generator - Admin JavaScript
- * 
+ *
  * @author Christian Mittenzwei
  * @version 1.0.0
  */
 
+// Fallback falls window.GLG nicht gesetzt wurde
+if (typeof window.GLG === 'undefined') {
+    window.GLG = {
+        controllerUrl: '../GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
+        baseUrl: '/'
+    };
+}
+
 $(document).ready(function() {
     console.log('GLG Admin JS loaded!');
+    console.log('GLG Config:', window.GLG);
 
     // Test: Bootstrap Tabs manuell aktivieren
     $('a[data-toggle="tab"]').on('click', function (e) {
@@ -65,7 +74,7 @@ $(document).ready(function() {
         formData.push({name: 'action', value: 'saveSettings'});
 
         $.ajax({
-            url: '../GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
+            url: window.GLG.controllerUrl,
             type: 'POST',
             data: formData,
             dataType: 'json',
@@ -95,7 +104,7 @@ $(document).ready(function() {
         $(this).prop('disabled', true).html('<span class="glyphicon glyphicon-refresh spinning"></span> Teste...');
 
         $.ajax({
-            url: '../GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
+            url: window.GLG.controllerUrl,
             type: 'POST',
             data: {
                 action: 'testApi',
@@ -131,7 +140,7 @@ $(document).ready(function() {
     $('#cancelBtn').click(function() {
         if (confirm('Generierung wirklich abbrechen?')) {
             $.ajax({
-                url: '../GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
+                url: window.GLG.controllerUrl,
                 type: 'POST',
                 data: {action: 'cancel'},
                 success: function() {
@@ -162,7 +171,7 @@ $(document).ready(function() {
  */
 function loadLanguageSuggestions() {
     $.ajax({
-        url: '../GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
+        url: window.GLG.controllerUrl,
         type: 'POST',
         data: {action: 'getLanguageSuggestions'},
         dataType: 'json',
@@ -204,7 +213,7 @@ $('#createLanguageForm').submit(function(e) {
     formData.push({name: 'action', value: 'createLanguage'});
 
     $.ajax({
-        url: '../GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
+        url: window.GLG.controllerUrl,
         type: 'POST',
         data: formData,
         dataType: 'json',
@@ -258,7 +267,7 @@ $('#compareForm').submit(function(e) {
     $('#compareResults').hide();
 
     $.ajax({
-        url: '../GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
+        url: window.GLG.controllerUrl,
         type: 'POST',
         data: formData,
         dataType: 'json',
@@ -341,7 +350,7 @@ $('#viewReportBtn').click(function() {
     };
 
     $.ajax({
-        url: '../GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
+        url: window.GLG.controllerUrl,
         type: 'POST',
         data: formData,
         dataType: 'json',
@@ -368,7 +377,7 @@ $('#updateMissingBtn').click(function() {
  */
 function loadModuleList() {
     $.ajax({
-        url: '../GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
+        url: window.GLG.controllerUrl,
         type: 'POST',
         data: {action: 'getModules'},
         dataType: 'json',
@@ -402,7 +411,7 @@ function startGeneration(formData) {
     $('#progressDetails').html('');
     
     $.ajax({
-        url: '../GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
+        url: window.GLG.controllerUrl,
         type: 'POST',
         data: formData,
         dataType: 'json',
@@ -427,7 +436,7 @@ function startGeneration(formData) {
 function pollProgress(processId) {
     var pollInterval = setInterval(function() {
         $.ajax({
-            url: '../GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
+            url: window.GLG.controllerUrl,
             type: 'POST',
             data: {
                 action: 'getProgress',
@@ -472,7 +481,7 @@ function updateProgress(progress) {
  */
 function loadLastUpdate() {
     $.ajax({
-        url: '../GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
+        url: window.GLG.controllerUrl,
         type: 'POST',
         data: {action: 'getLastUpdate'},
         dataType: 'json',
@@ -490,7 +499,7 @@ function loadLastUpdate() {
  */
 function loadChanges(sinceDate) {
     $.ajax({
-        url: '../GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
+        url: window.GLG.controllerUrl,
         type: 'POST',
         data: {
             action: 'getChanges',
@@ -521,7 +530,7 @@ function loadChanges(sinceDate) {
  */
 function loadLog() {
     $.ajax({
-        url: '../GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
+        url: window.GLG.controllerUrl,
         type: 'POST',
         data: {action: 'getLog'},
         dataType: 'json',
@@ -550,7 +559,7 @@ function loadLog() {
  */
 function loadSettings() {
     $.ajax({
-        url: '../GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
+        url: window.GLG.controllerUrl,
         type: 'POST',
         data: {action: 'getSettings'},
         dataType: 'json',

@@ -529,18 +529,21 @@ if (isset($t_language_text_section_content_array) && is_array($t_language_text_s
         </div>
     </div>
 
-    <!-- jQuery wird von Gambio bereits geladen, falls nicht: -->
-    <script>
-        if (typeof jQuery === 'undefined') {
-            document.write('<script src="https://code.jquery.com/jquery-3.6.0.min.js"><\/script>');
-        }
-        // Debug
-        window.addEventListener('load', function() {
-            console.log('jQuery version:', typeof jQuery !== 'undefined' ? jQuery.fn.jquery : 'NOT LOADED');
-            console.log('Bootstrap:', typeof jQuery !== 'undefined' && typeof jQuery.fn.tab !== 'undefined' ? 'loaded' : 'NOT LOADED');
-        });
-    </script>
+    <!-- jQuery und Bootstrap laden -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
-    <script src="../GXModules/REDOzone/GambioLanguageGenerator/admin/glg_admin.js"></script>
+    <script>
+        // Globale Konfiguration für AJAX-Requests
+        window.GLG = {
+            controllerUrl: '<?php echo DIR_FS_CATALOG; ?>GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
+            baseUrl: '<?php echo DIR_FS_CATALOG; ?>'
+        };
+
+        // Debug-Info
+        console.log('GLG Config loaded:', window.GLG);
+        console.log('jQuery loaded:', typeof jQuery !== 'undefined');
+        console.log('Bootstrap loaded:', typeof jQuery !== 'undefined' && typeof jQuery.fn.tab !== 'undefined');
+    </script>
+    <script src="<?php echo DIR_FS_CATALOG; ?>GXModules/REDOzone/GambioLanguageGenerator/admin/glg_admin.js"></script>
 </body>
 </html>
