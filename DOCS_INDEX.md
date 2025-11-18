@@ -1,8 +1,8 @@
 # 📚 Dokumentations-Übersicht
 
-**Gambio Language Generator - Development Branch**
-**Branch:** claude/gambio-language-generator-011CV4hTchAi6UmAhuQm88sk
-**Stand:** 2025-11-13
+**Gambio Language Generator - Production Branch**
+**Branch:** main
+**Stand:** 2025-11-18
 
 ---
 
@@ -33,7 +33,9 @@
 - Root-Cause-Analyse
 
 ### 📖 Ich bin neuer Entwickler
-→ Start: **[UPDATE_SUMMARY_2025-11-13.md](UPDATE_SUMMARY_2025-11-13.md)**
+→ Start: **[SESSION_2025-11-18.md](SESSION_2025-11-18.md)** (Neueste)
+- Letzte Session: Parallel Processing (2025-11-18)
+- Oder: **[UPDATE_SUMMARY_2025-11-13.md](UPDATE_SUMMARY_2025-11-13.md)** (Ältere)
 - Was wurde in dieser Session gemacht?
 - Alle Änderungen im Detail
 - Code-Diffs
@@ -54,9 +56,11 @@
 
 | Datei | Zweck | Für wen? |
 |-------|-------|----------|
+| **[PARALLEL_PROCESSING.md](PARALLEL_PROCESSING.md)** | Parallele Job-Verarbeitung (neu in 1.2.0) | Entwickler |
+| **[SESSION_2025-11-18.md](SESSION_2025-11-18.md)** | Session-Zusammenfassung Parallel Processing | Entwickler |
 | **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** | Problemlösungen, Debug-Kommandos | Alle bei Problemen |
 | **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** | Detaillierte Deployment-Anleitung | DevOps |
-| **[UPDATE_SUMMARY_2025-11-13.md](UPDATE_SUMMARY_2025-11-13.md)** | Zusammenfassung aller Änderungen | Entwickler |
+| **[UPDATE_SUMMARY_2025-11-13.md](UPDATE_SUMMARY_2025-11-13.md)** | Zusammenfassung aller Änderungen (alt) | Entwickler |
 
 ### 🟢 Hintergrund - Technische Details
 
@@ -133,16 +137,19 @@
 ```
 GambioLanguageGenerator/
 ├── 📚 DOCS_INDEX.md                      ← Du bist hier!
-├── 🔴 STATUS.md                          ← Aktueller Stand
+├── 🔴 STATUS.md                          ← Aktueller Stand (NEUESTE!)
 ├── 🔴 READY_FOR_TESTING.md               ← Test-Anleitung
 ├── 🔴 DEPLOYMENT_CHECKLIST.md            ← Deployment Steps
+├── 🟡 PARALLEL_PROCESSING.md             ← Parallele Jobs (Neu in 1.2.0!)
+├── 🟡 SESSION_2025-11-18.md              ← Session: Parallel Processing (Neu!)
 ├── 🟡 TROUBLESHOOTING.md                 ← Problemlösungen
 ├── 🟡 DEPLOYMENT_GUIDE.md                ← Detailliertes Deployment
-├── 🟡 UPDATE_SUMMARY_2025-11-13.md       ← Änderungs-Zusammenfassung
+├── 🟡 UPDATE_SUMMARY_2025-11-13.md       ← Änderungs-Zusammenfassung (alt)
+├── 🟢 ASYNC_IMPLEMENTATION.md            ← Asynchrone Worker-Architektur
 ├── 🟢 CLAUDE_CONTEXT.md                  ← Technische Details
 ├── 🟢 ROADMAP.md                         ← Geplante Features
 ├── 🟢 README.md                          ← Projekt-Übersicht
-├── 📋 CHANGELOG.md                       ← Versions-Historie
+├── 📋 CHANGELOG.md                       ← Versions-Historie (aktualisiert!)
 ├── 📋 QUICKSTART.md                      ← Schnellstart (alt)
 ├── 📋 INSTALLATION.md                    ← Installation (alt)
 └── 📋 ACCESS.md                          ← Zugriff (alt)
@@ -217,13 +224,15 @@ Legende:
 ## ✅ Dokumentations-Qualität
 
 **Vollständigkeit:** ✅ Alle Bereiche abgedeckt
-**Aktualität:** ✅ Stand 2025-11-13
+**Aktualität:** ✅ Stand 2025-11-18 (Parallel Processing)
 **Klarheit:** ✅ Strukturiert mit Beispielen
 **Praktisch:** ✅ Copy-Paste Befehle
-**Umfang:** ✅ ~2.000 Zeilen
+**Umfang:** ✅ ~2.500+ Zeilen
 
 ---
 
-**Version:** 1.0
+**Version:** 1.2.0
 **Erstellt:** 2025-11-13
-**Branch:** claude/gambio-language-generator-011CV4hTchAi6UmAhuQm88sk
+**Aktualisiert:** 2025-11-18 (Parallel Processing Implementation)
+**Branch:** main
+**Commit:** e3112e4
