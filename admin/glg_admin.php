@@ -11,6 +11,26 @@ if (!defined('_VALID_XTC')) {
     die('Direct Access to this location is not allowed.');
 }
 
+// Fallback für Gambio-Funktionen falls not loaded
+if (!function_exists('xtc_db_query')) {
+    // Wenn über Admin-Proxy aufgerufen und DB nicht initialisiert
+    error_log('WARNING: xtc_db_query not defined - using fallback');
+    function xtc_db_query($query) {
+        global $connection;
+        if (!isset($connection)) {
+            return false;
+        }
+        return mysqli_query($connection, $query);
+    }
+}
+
+if (!function_exists('xtc_db_fetch_array')) {
+    function xtc_db_fetch_array($result) {
+        if (!$result) return false;
+        return mysqli_fetch_array($result, MYSQLI_ASSOC);
+    }
+}
+
 // Sprachdatei laden
 $langDir = isset($_SESSION['language']) ? $_SESSION['language'] : 'german';
 $langFile = DIR_FS_CATALOG . 'GXModules/REDOzone/GambioLanguageGenerator/lang/' . $langDir . '/glg.php';
@@ -140,10 +160,28 @@ if (isset($t_language_text_section_content_array) && is_array($t_language_text_s
                                     <option value="">Bitte wählen...</option>
                                     <?php
                                     // Verfügbare Sprachen aus der Datenbank laden
-                                    $languages_query = xtc_db_query("SELECT * FROM languages ORDER BY sort_order");
-                                    while ($lang = xtc_db_fetch_array($languages_query)) {
+                                    $languages = array();
+                                    if (function_exists('xtc_db_query')) {
+                                        $languages_query = xtc_db_query("SELECT * FROM languages ORDER BY sort_order");
+                                        if ($languages_query) {
+                                            while ($lang = xtc_db_fetch_array($languages_query)) {
+                                                $languages[] = $lang;
+                                            }
+                                        }
+                                    }
+
+                                    // Fallback auf Standard-Sprachen wenn DB nicht erreichbar
+                                    if (empty($languages)) {
+                                        $languages = array(
+                                            array('directory' => 'german', 'name' => 'Deutsch'),
+                                            array('directory' => 'english', 'name' => 'English'),
+                                            array('directory' => 'french', 'name' => 'Français'),
+                                        );
+                                    }
+
+                                    foreach ($languages as $lang) {
                                         $selected = ($lang['directory'] == 'german') ? 'selected' : '';
-                                        echo '<option value="' . $lang['directory'] . '" ' . $selected . '>' . 
+                                        echo '<option value="' . $lang['directory'] . '" ' . $selected . '>' .
                                              $lang['name'] . '</option>';
                                     }
                                     ?>
@@ -155,11 +193,11 @@ if (isset($t_language_text_section_content_array) && is_array($t_language_text_s
                                 <label><?php echo GLG_TARGET_LANGUAGES; ?></label>
                                 <div class="checkbox-group">
                                     <?php
-                                    $languages_query = xtc_db_query("SELECT * FROM languages ORDER BY sort_order");
-                                    while ($lang = xtc_db_fetch_array($languages_query)) {
+                                    // Verwende die bereits geladene $languages variable
+                                    foreach ($languages as $lang) {
                                         echo '<div class="checkbox language-checkbox">';
                                         echo '<label>';
-                                        echo '<input type="checkbox" name="targetLanguages[]" value="' . 
+                                        echo '<input type="checkbox" name="targetLanguages[]" value="' .
                                              $lang['directory'] . '"> ' . $lang['name'];
                                         echo '</label>';
                                         echo '</div>';
@@ -231,10 +269,9 @@ if (isset($t_language_text_section_content_array) && is_array($t_language_text_s
                                 <select class="form-control" id="compareSourceLanguage" name="sourceLanguage">
                                     <option value="">Bitte wählen...</option>
                                     <?php
-                                    $languages_query = xtc_db_query("SELECT * FROM languages ORDER BY sort_order");
-                                    while ($lang = xtc_db_fetch_array($languages_query)) {
+                                    foreach ($languages as $lang) {
                                         $selected = ($lang['directory'] == 'german') ? 'selected' : '';
-                                        echo '<option value="' . $lang['directory'] . '" ' . $selected . '>' . 
+                                        echo '<option value="' . $lang['directory'] . '" ' . $selected . '>' .
                                              $lang['name'] . '</option>';
                                     }
                                     ?>
@@ -247,8 +284,7 @@ if (isset($t_language_text_section_content_array) && is_array($t_language_text_s
                                 <select class="form-control" id="compareTargetLanguage" name="targetLanguage">
                                     <option value="">Bitte wählen...</option>
                                     <?php
-                                    $languages_query = xtc_db_query("SELECT * FROM languages ORDER BY sort_order");
-                                    while ($lang = xtc_db_fetch_array($languages_query)) {
+                                    foreach ($languages as $lang) {
                                         echo '<option value="' . $lang['directory'] . '">' . $lang['name'] . '</option>';
                                     }
                                     ?>
@@ -483,12 +519,12 @@ if (isset($t_language_text_section_content_array) && is_array($t_language_text_s
                     <div class="settings-group">
                         <h3><?php echo GLG_LICENSE_KEY; ?></h3>
                         <div class="form-group">
-                            <input type="text" class="form-control" name="licenseKey" 
-                                   value="<?php echo $license->getLicenseKey(); ?>" readonly>
+                            <input type="text" class="form-control" name="licenseKey"
+                                   value="<?php echo (isset($license) && $license) ? $license->getLicenseKey() : 'N/A'; ?>" readonly>
                         </div>
                         <div class="alert alert-success">
-                            <strong><?php echo GLG_LICENSE_STATUS; ?>:</strong> <?php echo GLG_LICENSE_VALID; ?><br>
-                            <strong><?php echo GLG_LICENSE_URL; ?>:</strong> <?php echo $license->getLicensedUrl(); ?>
+                            <strong><?php echo GLG_LICENSE_STATUS; ?>:</strong> <?php echo (isset($license) && $license) ? GLG_LICENSE_VALID : 'N/A'; ?><br>
+                            <strong><?php echo GLG_LICENSE_URL; ?>:</strong> <?php echo (isset($license) && $license) ? $license->getLicensedUrl() : 'N/A'; ?>
                         </div>
                     </div>
 
@@ -535,8 +571,8 @@ if (isset($t_language_text_section_content_array) && is_array($t_language_text_s
     <script>
         // Globale Konfiguration für AJAX-Requests
         window.GLG = {
-            controllerUrl: '<?php echo DIR_FS_CATALOG; ?>GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
-            baseUrl: '<?php echo DIR_FS_CATALOG; ?>'
+            controllerUrl: '/GXModules/REDOzone/GambioLanguageGenerator/admin/glg_controller.php',
+            baseUrl: '/'
         };
 
         // Debug-Info
@@ -544,6 +580,6 @@ if (isset($t_language_text_section_content_array) && is_array($t_language_text_s
         console.log('jQuery loaded:', typeof jQuery !== 'undefined');
         console.log('Bootstrap loaded:', typeof jQuery !== 'undefined' && typeof jQuery.fn.tab !== 'undefined');
     </script>
-    <script src="<?php echo DIR_FS_CATALOG; ?>GXModules/REDOzone/GambioLanguageGenerator/admin/glg_admin.js"></script>
+    <script src="/GXModules/REDOzone/GambioLanguageGenerator/admin/glg_admin.js"></script>
 </body>
 </html>
