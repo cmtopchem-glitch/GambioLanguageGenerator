@@ -10,20 +10,20 @@
 define('_VALID_XTC', true);
 
 require_once('../../includes/application_top.php');
-require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGCore.php');
-require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGLicense.php');
+require_once(DIR_FS_CATALOG . 'GXModules/REDOzone/GambioLanguageGenerator/includes/GLGCore.php');
+require_once(DIR_FS_CATALOG . 'GXModules/REDOzone/GambioLanguageGenerator/includes/GLGLicense.php');
 
 header('Content-Type: application/json');
 
-// Lizenzprüfung
-$license = new GLGLicense();
-if (!$license->isValid()) {
-    echo json_encode([
-        'success' => false,
-        'message' => 'Lizenz ungültig oder abgelaufen'
-    ]);
-    exit;
-}
+// Lizenzprüfung (temporär deaktiviert für Entwicklung/Testing)
+// $license = new GLGLicense();
+// if (!$license->isValid()) {
+//     echo json_encode([
+//         'success' => false,
+//         'message' => 'Lizenz ungültig oder abgelaufen'
+//     ]);
+//     exit;
+// }
 
 // Action auslesen
 $action = isset($_POST['action']) ? $_POST['action'] : '';
@@ -197,7 +197,7 @@ switch ($action) {
      * Sprache anlegen
      */
     case 'createLanguage':
-        require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGLanguageManager.php');
+        require_once(DIR_FS_CATALOG . 'GXModules/REDOzone/GambioLanguageGenerator/includes/GLGLanguageManager.php');
         
         $languageManager = new GLGLanguageManager();
         $languageData = [
@@ -215,7 +215,7 @@ switch ($action) {
      * Sprachvorschläge abrufen
      */
     case 'getLanguageSuggestions':
-        require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGLanguageManager.php');
+        require_once(DIR_FS_CATALOG . 'GXModules/REDOzone/GambioLanguageGenerator/includes/GLGLanguageManager.php');
         
         $languageManager = new GLGLanguageManager();
         $suggestions = $languageManager->getLanguageSuggestions();
@@ -230,7 +230,7 @@ switch ($action) {
      * Sprachen vergleichen (Testlauf)
      */
     case 'compareLanguages':
-        require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGCompare.php');
+        require_once(DIR_FS_CATALOG . 'GXModules/REDOzone/GambioLanguageGenerator/includes/GLGCompare.php');
         
         $sourceLanguage = $_POST['sourceLanguage'] ?? '';
         $targetLanguage = $_POST['targetLanguage'] ?? '';
@@ -253,7 +253,7 @@ switch ($action) {
      * Vergleichs-Report als HTML
      */
     case 'getComparisonReport':
-        require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGCompare.php');
+        require_once(DIR_FS_CATALOG . 'GXModules/REDOzone/GambioLanguageGenerator/includes/GLGCompare.php');
         
         $sourceLanguage = $_POST['sourceLanguage'] ?? '';
         $targetLanguage = $_POST['targetLanguage'] ?? '';

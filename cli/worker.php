@@ -23,18 +23,28 @@ if (php_sapi_name() === 'cli' || php_sapi_name() === 'cli-server') {
 }
 
 // Ladedatei-Bootloader
+echo "[DEBUG] Loading application_top.php...\n";
 require_once(DIR_FS_CATALOG . 'includes/application_top.php');
+echo "[DEBUG] application_top.php loaded\n";
 
 // Lade GLGCore
+echo "[DEBUG] Loading GLG classes...\n";
 require_once(DIR_FS_CATALOG . 'GXModules/REDOzone/GambioLanguageGenerator/includes/GLGCore.php');
 require_once(DIR_FS_CATALOG . 'GXModules/REDOzone/GambioLanguageGenerator/includes/GLGReader.php');
 require_once(DIR_FS_CATALOG . 'GXModules/REDOzone/GambioLanguageGenerator/includes/GLGTranslator.php');
 require_once(DIR_FS_CATALOG . 'GXModules/REDOzone/GambioLanguageGenerator/includes/GLGFileWriter.php');
+echo "[DEBUG] GLG classes loaded\n";
 
 error_log("[GLG Worker] Started at " . date('Y-m-d H:i:s'));
+echo "[DEBUG] Worker started at " . date('Y-m-d H:i:s') . "\n";
 
+echo "[DEBUG] Initializing GLGCore...\n";
 $glgCore = new GLGCore();
+echo "[DEBUG] GLGCore initialized\n";
+
+echo "[DEBUG] Loading settings...\n";
 $settings = $glgCore->getSettings();
+echo "[DEBUG] Settings loaded\n";
 
 // Worker Loop - Läuft bis kein Job mehr verfügbar ist
 $jobCount = 0;
@@ -143,13 +153,14 @@ function processTranslationJob($job, $glgCore, $settings) {
         // Übersetze Batches
         foreach ($batches as $batchIndex => $batch) {
             try {
-                $translation = $translator->translateWithOpenAI($entries, $batch, $sourceLanguage, $targetLanguage);
+                $translated = $translator->translateBatch(
+                    $batch,
+                    $sourceLanguage,
+                    $targetLanguage,
+                    $sourceFile . ' - ' . $sectionName
+                );
 
-                if ($translation['success']) {
-                    $translatedEntries = array_merge($translatedEntries, $translation['translated']);
-                } else {
-                    throw new Exception('OpenAI Translation failed: ' . ($translation['error'] ?? 'Unknown error'));
-                }
+                $translatedEntries = array_merge($translatedEntries, $translated);
 
                 // Rate limiting - pause between batches
                 if ($batchIndex < count($batches) - 1) {
@@ -169,14 +180,12 @@ function processTranslationJob($job, $glgCore, $settings) {
     // Schreibe Zieldatei
     $glgCore->updateJobProgress($jobId, 95, 'Writing target language file...');
 
-    $targetFilePath = $writer->writeLanguageFile(
-        $sourceFile,
-        $targetLanguage,
-        $translatedSections,
-        $fileData['latest_modification'] ?? date('Y-m-d H:i:s')
-    );
+    $result = $writer->writeSourceFile([
+        'source' => $sourceFile,
+        'sections' => $translatedSections
+    ], $targetLanguage);
 
-    error_log("[GLG Worker] Job $jobId: Wrote file to $targetFilePath");
+    error_log("[GLG Worker] Job $jobId: Wrote file to " . $result['file']);
 
     // Fertig
     $glgCore->updateJobProgress($jobId, 100, 'Completed');

@@ -12,15 +12,30 @@ if (!defined('_VALID_XTC')) {
 }
 
 // Sprachdatei laden
-require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/lang/' . $_SESSION['language'] . '/glg.php');
-
-// Lizenzprüfung
-require_once(DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/includes/GLGLicense.php');
-$license = new GLGLicense();
-if (!$license->isValid()) {
-    echo '<div class="alert alert-danger">' . GLG_ERROR_LICENSE . '</div>';
-    return;
+$langDir = isset($_SESSION['language']) ? $_SESSION['language'] : 'german';
+$langFile = DIR_FS_CATALOG . 'GXModules/REDOzone/GambioLanguageGenerator/lang/' . $langDir . '/glg.php';
+if (file_exists($langFile)) {
+    require_once($langFile);
+} else {
+    require_once(DIR_FS_CATALOG . 'GXModules/REDOzone/GambioLanguageGenerator/lang/german/glg.php');
 }
+
+// Definiere Konstanten aus dem Sprach-Array
+if (isset($t_language_text_section_content_array) && is_array($t_language_text_section_content_array)) {
+    foreach ($t_language_text_section_content_array as $key => $value) {
+        if (!defined($key)) {
+            define($key, $value);
+        }
+    }
+}
+
+// Lizenzprüfung (temporär deaktiviert für Entwicklung/Testing)
+// require_once(DIR_FS_CATALOG . 'GXModules/REDOzone/GambioLanguageGenerator/includes/GLGLicense.php');
+// $license = new GLGLicense();
+// if (!$license->isValid()) {
+//     echo '<div class="alert alert-danger">' . GLG_ERROR_LICENSE . '</div>';
+//     return;
+// }
 ?>
 
 <!DOCTYPE html>
@@ -514,8 +529,18 @@ if (!$license->isValid()) {
         </div>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- jQuery wird von Gambio bereits geladen, falls nicht: -->
+    <script>
+        if (typeof jQuery === 'undefined') {
+            document.write('<script src="https://code.jquery.com/jquery-3.6.0.min.js"><\/script>');
+        }
+        // Debug
+        window.addEventListener('load', function() {
+            console.log('jQuery version:', typeof jQuery !== 'undefined' ? jQuery.fn.jquery : 'NOT LOADED');
+            console.log('Bootstrap:', typeof jQuery !== 'undefined' && typeof jQuery.fn.tab !== 'undefined' ? 'loaded' : 'NOT LOADED');
+        });
+    </script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
-    <script src="GXModules/GambioLanguageGenerator/admin/glg_admin.js"></script>
+    <script src="../GXModules/REDOzone/GambioLanguageGenerator/admin/glg_admin.js"></script>
 </body>
 </html>

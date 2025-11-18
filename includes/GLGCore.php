@@ -57,7 +57,35 @@ class GLGCore {
             PRIMARY KEY (`id`),
             UNIQUE KEY `languages` (`source_language`, `target_language`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
-        
+
+        xtc_db_query($query);
+
+        // Job Queue Tabelle (für asynchrone Verarbeitung)
+        $query = "CREATE TABLE IF NOT EXISTS `rz_glg_jobs` (
+            `id` int(11) NOT NULL AUTO_INCREMENT,
+            `job_id` varchar(100) NOT NULL,
+            `status` enum('pending','processing','success','error','cancelled') DEFAULT 'pending',
+            `action` varchar(50) NOT NULL,
+            `source_language` varchar(50) NOT NULL,
+            `target_language` varchar(50) NOT NULL,
+            `source_file` varchar(255) NOT NULL,
+            `params` longtext,
+            `progress_percent` int(3) DEFAULT 0,
+            `progress_text` varchar(255) DEFAULT '',
+            `error_message` text,
+            `worker_pid` int(11) DEFAULT NULL,
+            `started_at` datetime DEFAULT CURRENT_TIMESTAMP,
+            `completed_at` datetime DEFAULT NULL,
+            `locked_until` datetime DEFAULT NULL,
+            `retry_count` int(11) DEFAULT 0,
+            PRIMARY KEY (`id`),
+            UNIQUE KEY `job_id` (`job_id`),
+            KEY `status` (`status`),
+            KEY `action` (`action`),
+            KEY `worker_pid` (`worker_pid`),
+            KEY `locked_until` (`locked_until`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+
         xtc_db_query($query);
     }
     
@@ -136,7 +164,25 @@ class GLGCore {
         }
 
         // Starte Background Worker im Hintergrund
-        $this->startBackgroundWorker();
+        // Berechne optimale Worker-Anzahl basierend auf Job-Count
+        // - 1-5 Jobs: 1 Worker
+        // - 6-15 Jobs: 2 Worker
+        // - 16-30 Jobs: 3 Worker
+        // - 31+ Jobs: min(5, ceil(jobCount/10))
+        $jobCount = count($jobIds);
+        $numWorkers = 1;
+
+        if ($jobCount > 30) {
+            $numWorkers = min(5, ceil($jobCount / 10));
+        } elseif ($jobCount > 15) {
+            $numWorkers = 3;
+        } elseif ($jobCount > 5) {
+            $numWorkers = 2;
+        }
+
+        error_log("[GLG] Job count: $jobCount, Starting $numWorkers parallel workers");
+
+        $this->startBackgroundWorker($numWorkers, 10);
 
         return [
             'success' => true,
@@ -149,34 +195,43 @@ class GLGCore {
 
     /**
      * Startet Background Worker im Hintergrund
+     *
+     * @param int $numWorkers Anzahl paralleler Worker (Standard: 3)
+     * @param int $jobsPerWorker Jobs pro Worker (Standard: 10)
      */
-    private function startBackgroundWorker() {
+    private function startBackgroundWorker($numWorkers = 3, $jobsPerWorker = 10) {
+        $parallelScript = DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/cli/parallel_worker.sh';
         $workerScript = DIR_FS_CATALOG . 'GXModules/GambioLanguageGenerator/cli/worker.php';
 
-        if (!file_exists($workerScript)) {
+        // Prüfe ob Parallel-Script existiert und ausführbar ist
+        if (file_exists($parallelScript) && is_executable($parallelScript)) {
+            error_log("[GLG] Starting $numWorkers parallel workers via $parallelScript");
+
+            $command = "$parallelScript $numWorkers $jobsPerWorker > /dev/null 2>&1 &";
+            exec($command, $output, $returnCode);
+
+            error_log("[GLG] Started parallel workers: $command (return code: $returnCode)");
+            return $returnCode === 0;
+
+        } elseif (file_exists($workerScript)) {
+            // Fallback: Starte einzelnen Worker
+            error_log("[GLG] Parallel script not found, starting single worker");
+
+            $php = exec('which php');
+            if (!$php) {
+                $php = 'php'; // Fallback
+            }
+
+            $command = "$php $workerScript $jobsPerWorker > /dev/null 2>&1 &";
+            exec($command, $output, $returnCode);
+
+            error_log("[GLG] Started single background worker: $command (return code: $returnCode)");
+            return $returnCode === 0;
+
+        } else {
             error_log("[GLG] Worker script not found: $workerScript");
             return false;
         }
-
-        // Starte Worker asynchron ohne auf Completion zu warten
-        // Unix/Linux: php script.php > /dev/null 2>&1 &
-        // Windows: start php script.php
-
-        $php = exec('which php');
-        if (!$php) {
-            $php = 'php'; // Fallback
-        }
-
-        $command = "$php $workerScript > /dev/null 2>&1 &";
-
-        // Unter Windows wäre: pclose(popen("start /B php $workerScript", "r"));
-        // Aber wir sind auf Linux
-
-        exec($command, $output, $returnCode);
-
-        error_log("[GLG] Started background worker: $command (return code: $returnCode)");
-
-        return $returnCode === 0;
     }
 
     /**
